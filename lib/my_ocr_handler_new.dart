@@ -209,7 +209,7 @@ class MyOcrHandlerNew {
     List<String> rawLines = ocr.lines.map((a) => a.text).toList();
     List<String> rawMrzLines = [];
     List<String> otherLines = [];
-    List<String> fixedMrzLines = [ ];
+    List<String> fixedMrzLines = [];
     String firstLineFixed = "";
     String secondLineFixed = "";
     String? thirdLineFixed;
@@ -264,7 +264,6 @@ class MyOcrHandlerNew {
         // For TD1 we expect a third line; for TD2/TD3 names are usually on line1.
 
         // log("\n${rawMrzLines.join("\n")}");
-
 
         // Also use length as a hint to pick TD2 vs TD3 later
         if (looksTd23) {
@@ -519,7 +518,7 @@ class MyOcrHandlerNew {
               if (name != null) {
                 firstName = name.givenNames.join(" ");
                 lastName = name.surname;
-                var (a,_,__) = name.validateNames(otherLines,OcrMrzSetting(nameValidationMode: NameValidationMode.exact),[]);
+                var (a, _, __) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
                 validation.nameValid = a;
               }
 
@@ -535,12 +534,12 @@ class MyOcrHandlerNew {
     OcrMrzResult result = OcrMrzResult(
       line1: firstLineFixed,
       line2: secondLineFixed,
-      format: format??'unknown',
-      documentCode: docCode??'',
-      documentType: type?.name.toUpperCase()??'',
+      format: format ?? 'unknown',
+      documentCode: docCode ?? '',
+      documentType: type?.name.toUpperCase() ?? '',
       mrzFormat: format,
-      countryCode: fixExceptionalCountry(countryCode??''),
-      issuingState: fixExceptionalCountry(issuing??''),
+      countryCode: fixExceptionalCountry(countryCode ?? ''),
+      issuingState: fixExceptionalCountry(issuing ?? ''),
 
       lastName: lastName ?? '',
       firstName: firstName ?? '',
@@ -555,12 +554,10 @@ class MyOcrHandlerNew {
       checkDigits: CheckDigits(document: true, birth: true, expiry: true, optional: true),
       ocrData: ocr,
     );
-    if(rawMrzLines.isNotEmpty){
+    if (rawMrzLines.isNotEmpty) {
       log("\n${rawMrzLines.join("\n")}");
       mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: fixedMrzLines, validation: validation, extractedData: result.toJson()));
-    }else{
-
-    }
+    } else {}
     return result;
 
     // log("\n${fixedMrzLines.join("\n")}");

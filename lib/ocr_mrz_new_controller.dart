@@ -10,7 +10,9 @@ class OcrMrzControllerNew extends CameraKitPlusController {
   late final ValueNotifier<OcrMrzApiConfig?> _apiConfigNotifier;
 
   OcrMrzApiConfig? get apiConfig => _apiConfigNotifier.value;
+
   set apiConfig(OcrMrzApiConfig? newConfig) => _apiConfigNotifier.value = newConfig;
+
   ValueNotifier<OcrMrzApiConfig?> get apiConfigNotifier => _apiConfigNotifier;
 
   OcrMrzControllerNew({OcrMrzApiConfig? apiConfig, int confidence = 3}) {

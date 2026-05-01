@@ -33,7 +33,7 @@ class OcrMrzReaderNew extends StatefulWidget {
 class _OcrMrzReaderNewState extends State<OcrMrzReaderNew> {
   // The state is now simple and holds no parser instance.
   // The controller is the single source of truth.
-  
+
   @override
   Widget build(BuildContext context) {
     return CameraKitOcrPlusView(
@@ -48,18 +48,18 @@ class _OcrMrzReaderNewState extends State<OcrMrzReaderNew> {
         try {
           // 1. Always use the parser from the controller.
           final result = widget.controller.mrzParser.parse(ocrData, settings: widget.validationSettings);
-          
+
           // 2. Always get progress from the controller's parser.
           widget.onProgress?.call(widget.controller.mrzParser.getProgress(ocrData));
 
           if (result != null) {
             log('--- MRZ Found! ---');
-            
+
             // 3. Call the user's callback first.
             widget.onFoundMrz(result);
-            
+
             // 4. Then, tell the controller to reset the one and only session.
-            widget.controller.resetSession(); 
+            widget.controller.resetSession();
           }
         } catch (e) {
           log('Error during MRZ parsing: $e');

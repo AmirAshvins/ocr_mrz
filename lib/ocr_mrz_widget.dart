@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
+
+import 'package:camera_kit_plus/camera_kit_plus.dart';
 import 'package:camera_kit_plus/camera_kit_plus_controller.dart';
 import 'package:camera_kit_plus/enums.dart';
 import 'package:flutter/material.dart';
-import 'package:camera_kit_plus/camera_kit_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
-import 'package:ocr_mrz/mrz_result_class.dart';
 import 'package:ocr_mrz/my_ocr_handler.dart';
 import 'package:ocr_mrz/my_ocr_handler_new.dart';
 import 'package:ocr_mrz/ocr_mrz_api_config.dart';
@@ -18,18 +18,15 @@ import 'package:ocr_mrz/online_parse_class.dart';
 import 'package:ocr_mrz/orc_mrz_log_class.dart';
 import 'package:ocr_mrz/passport_util.dart';
 import 'package:ocr_mrz/session_logger.dart';
-import 'package:ocr_mrz/session_ocr_handler.dart';
 import 'package:ocr_mrz/session_ocr_handler_consensus.dart';
 import 'package:ocr_mrz/session_status_class.dart';
 
 import 'aggregator.dart';
-import 'improved_ocr_handler.dart';
 import 'mrz_result_class_fix.dart';
-import 'mrz_util.dart';
 import 'name_validation_data_class.dart';
-
 import 'travel_doc_util.dart';
 import 'visa_util.dart';
+
 export 'session_log_history_list_dialog.dart';
 
 class OcrMrzController extends CameraKitPlusController {
@@ -298,7 +295,13 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
           _ocrDataBuffer.add(c);
         }
         if (widget.setting?.algorithm == ParseAlgorithm.method3) {
-          OcrMrzLog log = OcrMrzLog(rawText: c.text, rawMrzLines: c.lines.where((a) => a.text.contains("<")).map((a) => a.text).toList(), fixedMrzLines: [], validation: OcrMrzValidation(), extractedData: {});
+          OcrMrzLog log = OcrMrzLog(
+            rawText: c.text,
+            rawMrzLines: c.lines.where((a) => a.text.contains("<")).map((a) => a.text).toList(),
+            fixedMrzLines: [],
+            validation: OcrMrzValidation(),
+            extractedData: {},
+          );
           widget.mrzLogger?.call(log);
         } else {
           final newCon = _sessionOcrHandler.handleSession(widget.controller.aggregator, c, widget.setting ?? OcrMrzSetting(), widget.nameValidations ?? []);

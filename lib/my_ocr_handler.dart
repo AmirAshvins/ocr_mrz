@@ -6,7 +6,6 @@ import 'package:ocr_mrz/mrz_result_class_fix.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
-import 'issue_date_guess.dart';
 import 'my_name_handler.dart';
 import 'orc_mrz_log_class.dart';
 
@@ -80,10 +79,34 @@ String fixAlphaOnlyField(String value) {
 }
 
 String fixExceptionalCountry(String value) {
-  final map = {'D<<': 'DEU', 'D': 'DEU', 'D  ': 'DEU', 'BAH': 'ZWE', 'ZIM': 'ZWE', 'UK': 'GBR', 'UK<': 'GBR', 'UK ': 'GBR', 'SUN': 'RUS', 'GRE': 'GRC', 'CSK': 'CZE','I':'ITA','I<<':'ITA','I  ':'ITA','F  ':'FRA','F<<':'FRA','F':'FRA','A  ':'AUT','A<<':'AUT','A':'AUT','CH ':'CHE','CH<':'CHE','CH':'CHE',};
-  if(map.keys.contains(value)){
+  final map = {
+    'D<<': 'DEU',
+    'D': 'DEU',
+    'D  ': 'DEU',
+    'BAH': 'ZWE',
+    'ZIM': 'ZWE',
+    'UK': 'GBR',
+    'UK<': 'GBR',
+    'UK ': 'GBR',
+    'SUN': 'RUS',
+    'GRE': 'GRC',
+    'CSK': 'CZE',
+    'I': 'ITA',
+    'I<<': 'ITA',
+    'I  ': 'ITA',
+    'F  ': 'FRA',
+    'F<<': 'FRA',
+    'F': 'FRA',
+    'A  ': 'AUT',
+    'A<<': 'AUT',
+    'A': 'AUT',
+    'CH ': 'CHE',
+    'CH<': 'CHE',
+    'CH': 'CHE',
+  };
+  if (map.keys.contains(value)) {
     return map[value]!;
-  }else{
+  } else {
     return value;
   }
 
@@ -93,8 +116,8 @@ String fixExceptionalCountry(String value) {
 List<String> parseOldNumNat(String secondLineFixed) {
   final List<String> result = [];
   // 1) Extract MRZ doc number field and its check digit (positions 1–9 and 10)
-  final mrzDocField = secondLineFixed.substring(0, 9);   // [0..8]
-  final mrzDocCheck = secondLineFixed.substring(9, 10);  // [9]
+  final mrzDocField = secondLineFixed.substring(0, 9); // [0..8]
+  final mrzDocCheck = secondLineFixed.substring(9, 10); // [9]
   final baseDocNumber = mrzDocField.replaceAll('<', '');
 
   final docNumberValid = _computeMrzCheckDigit(mrzDocField) == mrzDocCheck;
@@ -125,21 +148,18 @@ List<String> parseOldNumNat(String secondLineFixed) {
     fullDocNumber = baseDocNumber;
   }
 
-  if(docNumberValid && nationalityValid){
+  if (docNumberValid && nationalityValid) {
     result.add(fullDocNumber);
     result.add(nationality);
   }
 
   return result;
 }
-final issueDateYYMMDD = RegExp(
-  r'(?<!\d)(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)',
-  caseSensitive: false,
-);
+
+final issueDateYYMMDD = RegExp(r'(?<!\d)(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)', caseSensitive: false);
 
 class MyOcrHandler {
   static OcrMrzResult? handle(OcrData ocr, void Function(OcrMrzLog log)? mrzLogger) {
-
     OcrMrzValidation validation = OcrMrzValidation();
     DocumentStandardType? type;
     String? format;
@@ -209,7 +229,7 @@ class MyOcrHandler {
       validation.docCodeValid = DocumentCodeHelper.isValid(docCode);
       validation.countryValid = isValidMrzCountry(countryCode);
 
-      if(!validation.countryValid){
+      if (!validation.countryValid) {
         log("country $countryCode is not valid");
       }
 
@@ -250,9 +270,9 @@ class MyOcrHandler {
           validation.nationalityValid = isValidMrzCountry(nationalityStr);
         }
 
-        if(!validation.docNumberValid){
+        if (!validation.docNumberValid) {
           final oldFixes = parseOldNumNat(secondLineFixed);
-          if(oldFixes.length == 2){
+          if (oldFixes.length == 2) {
             docNumber = oldFixes[0];
             nationality = oldFixes[1];
             validation.docNumberValid = true;
@@ -278,7 +298,7 @@ class MyOcrHandler {
           validation.hasFinalCheck = true;
           validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
 
-          final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr??'');
+          final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr ?? '');
           if (issueDateMatch != null) {
             final issueDateStr = issueDateMatch.group(0); // "220620"
             issueDate = _parseMrzDate(issueDateStr!);
@@ -326,13 +346,13 @@ class MyOcrHandler {
           } else {
             optional = optionalStr;
             finalCheckValue += (optionalStr ?? '');
-            validation.personalNumberValid = true; 
+            validation.personalNumberValid = true;
             validation.hasFinalCheck = true;
             validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
 
-            final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr??'');
+            final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr ?? '');
             if (issueDateMatch != null) {
-              final issueDateStr = issueDateMatch.group(0); 
+              final issueDateStr = issueDateMatch.group(0);
               issueDate = _parseMrzDate(issueDateStr!);
             }
           }
@@ -365,12 +385,12 @@ class MyOcrHandler {
           final optionalStr = td1OptionalFinalMatch.group(1);
           final finalCheckStr = td1OptionalFinalMatch.group(2);
           optional = optionalStr;
-          final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr??'');
+          final issueDateMatch = issueDateYYMMDD.firstMatch(optionalStr ?? '');
           if (issueDateMatch != null) {
-            final issueDateStr = issueDateMatch.group(0); 
+            final issueDateStr = issueDateMatch.group(0);
             issueDate = _parseMrzDate(issueDateStr!);
           }
-          finalCheckValue += (optionalStr ?? ''); 
+          finalCheckValue += (optionalStr ?? '');
           validation.personalNumberValid = true;
           validation.hasFinalCheck = true;
           validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
@@ -382,14 +402,11 @@ class MyOcrHandler {
       if (name != null) {
         firstName = name.givenNames.join(" ");
         lastName = name.surname;
-        validation.nameValid = name.validateNames(otherLines,OcrMrzSetting(nameValidationMode: NameValidationMode.exact),[]).$1;
+        validation.nameValid = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []).$1;
       }
-
 
       log(validation.toString());
       log("-" * 100);
-
-
 
       OcrMrzResult result = OcrMrzResult(
         line1: firstLineFixed,
@@ -441,7 +458,7 @@ class MyOcrHandler {
   }
 
   static OcrMrzResult? debug(String s) {
-   OcrMrzResult? res = handle(OcrData(text: s, lines: s.split("\n").map((oc)=>OcrLine(text: oc, cornerPoints: [])).toList()),null);
-   return res;
+    OcrMrzResult? res = handle(OcrData(text: s, lines: s.split("\n").map((oc) => OcrLine(text: oc, cornerPoints: [])).toList()), null);
+    return res;
   }
 }

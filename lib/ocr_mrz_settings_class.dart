@@ -1,17 +1,15 @@
-import 'dart:developer';
-
 import 'package:flutter/foundation.dart';
 
 import 'mrz_result_class_fix.dart';
+
 enum ParseAlgorithm {
   method1,
   method2,
   method3;
 
   @override
-  toString(){
-    switch(this){
-
+  toString() {
+    switch (this) {
       case ParseAlgorithm.method1:
         return "1";
       case ParseAlgorithm.method2:
@@ -28,9 +26,8 @@ enum NameValidationMode {
   exact;
 
   @override
-  toString(){
-    switch(this){
-
+  toString() {
+    switch (this) {
       case NameValidationMode.none:
         return "None";
       case NameValidationMode.contain:
@@ -124,8 +121,8 @@ class OcrMrzSetting {
       validateNationality: (json['validateNationality'] as bool?) ?? true,
       rotation: rot,
       macro: (json['macro'] as bool?) ?? false,
-      algorithm:ParseAlgorithm.values.firstWhere((a)=>a.index == json["algorithm"]),
-      nameValidationMode:NameValidationMode.values.firstWhere((a)=>a.index == json["nameValidationMode"]),
+      algorithm: ParseAlgorithm.values.firstWhere((a) => a.index == json["algorithm"]),
+      nameValidationMode: NameValidationMode.values.firstWhere((a) => a.index == json["nameValidationMode"]),
     );
   }
 
@@ -149,21 +146,21 @@ class OcrMrzSetting {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-          other is OcrMrzSetting &&
-              validateDocNumberValid == other.validateDocNumberValid &&
-              validateBirthDateValid == other.validateBirthDateValid &&
-              validationDocumentCode == other.validationDocumentCode &&
-              validateExpiryDateValid == other.validateExpiryDateValid &&
-              validatePersonalNumberValid == other.validatePersonalNumberValid &&
-              validateFinalCheckValid == other.validateFinalCheckValid &&
-              validateNames == other.validateNames &&
-              validateLinesLength == other.validateLinesLength &&
-              validateCountry == other.validateCountry &&
-              validateNationality == other.validateNationality &&
-              rotation == other.rotation &&
-              algorithm == other.algorithm &&
-              nameValidationMode == other.nameValidationMode &&
-              macro == other.macro;
+      other is OcrMrzSetting &&
+          validateDocNumberValid == other.validateDocNumberValid &&
+          validateBirthDateValid == other.validateBirthDateValid &&
+          validationDocumentCode == other.validationDocumentCode &&
+          validateExpiryDateValid == other.validateExpiryDateValid &&
+          validatePersonalNumberValid == other.validatePersonalNumberValid &&
+          validateFinalCheckValid == other.validateFinalCheckValid &&
+          validateNames == other.validateNames &&
+          validateLinesLength == other.validateLinesLength &&
+          validateCountry == other.validateCountry &&
+          validateNationality == other.validateNationality &&
+          rotation == other.rotation &&
+          algorithm == other.algorithm &&
+          nameValidationMode == other.nameValidationMode &&
+          macro == other.macro;
 
   @override
   int get hashCode => Object.hash(
@@ -186,9 +183,9 @@ class OcrMrzSetting {
   @override
   String toString() =>
       'OcrMrzSetting(macro:$macro, rotation:$rotation, doc:$validateDocNumberValid, code:$validationDocumentCode, '
-          'birth:$validateBirthDateValid, exp:$validateExpiryDateValid, pn:$validatePersonalNumberValid, '
-          'final:$validateFinalCheckValid, names:$validateNames, len:$validateLinesLength, '
-          'country:$validateCountry, nat:$validateNationality) alg:${algorithm.name} nameValidationMode:$nameValidationMode';
+      'birth:$validateBirthDateValid, exp:$validateExpiryDateValid, pn:$validatePersonalNumberValid, '
+      'final:$validateFinalCheckValid, names:$validateNames, len:$validateLinesLength, '
+      'country:$validateCountry, nat:$validateNationality) alg:${algorithm.name} nameValidationMode:$nameValidationMode';
 }
 
 extension MrzValidationExt on OcrMrzResult {
@@ -207,8 +204,6 @@ extension MrzValidationExt on OcrMrzResult {
     //   '''
     // );
 
-
-
     return (valid.expiryDateValid || !setting.validateExpiryDateValid) &&
         (valid.finalCheckValid || !setting.validateFinalCheckValid) &&
         (valid.linesLengthValid || !setting.validateLinesLength) &&
@@ -220,4 +215,3 @@ extension MrzValidationExt on OcrMrzResult {
         (valid.docNumberValid || !setting.validateDocNumberValid);
   }
 }
-

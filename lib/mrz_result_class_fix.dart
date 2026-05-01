@@ -68,7 +68,6 @@ class OcrMrzResult {
   OcrData ocrData;
   String format;
 
-
   /// The duration from the start of the session until the result was found.
   /// This is a runtime value and not part of the JSON serialization.
   Duration? scanDuration;
@@ -195,7 +194,7 @@ class OcrMrzResult {
       valid: OcrMrzValidation.fromJson(json["valid"] ?? const {}),
       checkDigits: CheckDigits.fromJson(json["checkDigits"] ?? const {}),
       ocrData: OcrData.fromJson(json["ocrData"]),
-      format: json["format"] ?? 'unknown'
+      format: json["format"] ?? 'unknown',
     );
   }
 
@@ -283,8 +282,9 @@ class OcrMrzResult {
   }
 
   OcrMrzResult fixLines() {
-    String line1 = "${documentCode.padRight(2,"<")}${issuingState.padRight(3,"<")}${"${lastName}<<${firstName}"}".padRight(44, "<");
-    String line2 = "${documentNumber.padRight(9,"<")}${numberCheck??"<"}${nationality}${birthStr??"<<<<<<"}${bDataCheck??"<"}${sex.padRight(1,"<")}${expStr??"<<<<<<"}${eDataCheck??"<"}".padRight(44, "<");
+    String line1 = "${documentCode.padRight(2, "<")}${issuingState.padRight(3, "<")}${"${lastName}<<${firstName}"}".padRight(44, "<");
+    String line2 = "${documentNumber.padRight(9, "<")}${numberCheck ?? "<"}${nationality}${birthStr ?? "<<<<<<"}${bDataCheck ?? "<"}${sex.padRight(1, "<")}${expStr ?? "<<<<<<"}${eDataCheck ?? "<"}"
+        .padRight(44, "<");
 
     var fixed = this;
     fixed.line1 = line1;

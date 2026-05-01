@@ -3,6 +3,7 @@ import 'dart:async';
 enum LogFlushReason {
   /// The log batch was flushed due to the periodic timer.
   interval,
+
   /// The log batch was flushed manually, e.g., after finding a result.
   success,
 }
@@ -13,12 +14,7 @@ class SessionLogEntry {
   final int? step;
   final Map<String, dynamic> details;
 
-  SessionLogEntry({
-    required this.timestamp,
-    required this.message,
-    this.step,
-    this.details = const {},
-  });
+  SessionLogEntry({required this.timestamp, required this.message, this.step, this.details = const {}});
 
   @override
   String toString() {
@@ -26,13 +22,8 @@ class SessionLogEntry {
     return "[${timestamp.toIso8601String()}] (Step: ${step ?? 'N/A'}) $message$detailsString";
   }
 
-  Map<String,dynamic> toJson() {
-    return {
-      "message":"[${timestamp.toIso8601String()}] (Step: ${step ?? 'N/A'}) $message",
-      "step":step,
-      "description":message,
-      "details":details,
-    };
+  Map<String, dynamic> toJson() {
+    return {"message": "[${timestamp.toIso8601String()}] (Step: ${step ?? 'N/A'}) $message", "step": step, "description": message, "details": details};
     // final detailsString = details.isNotEmpty ? " - Details: $details" : "";
     // return "[${timestamp.toIso8601String()}] (Step: ${step ?? 'N/A'}) $message$detailsString";
   }
@@ -49,29 +40,15 @@ class SessionLogger {
   final List<SessionLogEntry> _logBuffer = [];
   bool _hasNewLogs = false;
 
-  SessionLogger({
-    this.maxLogSize = 500,
-    this.onLog,
-    this.onLogBatch,
-    this.logInterval,
-  }) {
+  SessionLogger({this.maxLogSize = 500, this.onLog, this.onLogBatch, this.logInterval}) {
     if (onLogBatch != null && logInterval != null) {
       final effectiveInterval = logInterval! > Duration.zero ? logInterval! : Duration.zero;
       _timer = Timer.periodic(effectiveInterval, (_) => flush(reason: LogFlushReason.interval));
     }
   }
 
-  void log({
-    required String message,
-    int? step,
-    Map<String, dynamic> details = const {},
-  }) {
-    final entry = SessionLogEntry(
-      timestamp: DateTime.now(),
-      message: message,
-      step: step,
-      details: details,
-    );
+  void log({required String message, int? step, Map<String, dynamic> details = const {}}) {
+    final entry = SessionLogEntry(timestamp: DateTime.now(), message: message, step: step, details: details);
 
     print(message);
     if (_logs.length >= maxLogSize) {

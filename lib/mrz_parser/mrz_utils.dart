@@ -12,7 +12,7 @@ String normalizeLine(String line, int expectedLength) {
   // 1. Remove ALL invalid characters (including spaces) and convert to uppercase.
   // We do NOT globally replace 'K' or 'C' here. That's a contextual name parsing task.
   String cleanedLine = line.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9<]'), '');
-  
+
   // 2. Pad with filler characters to meet the expected length.
   while (cleanedLine.length < expectedLength) {
     cleanedLine += '<';
@@ -51,7 +51,7 @@ DateTime? parseMrzDate(String yymmdd) {
     final currentYear = DateTime.now().year;
     final currentCentury = (currentYear ~/ 100) * 100;
     final currentTwoDigitYear = currentYear % 100;
-    if (year > currentTwoDigitYear + 10) { 
+    if (year > currentTwoDigitYear + 10) {
       year += currentCentury - 100;
     } else {
       year += currentCentury;

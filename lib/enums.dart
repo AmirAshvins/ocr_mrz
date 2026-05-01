@@ -1,5 +1,3 @@
-import 'package:ocr_mrz/mrz_result_class_fix.dart';
-
 // enum DocumentStandardType {
 //   td1,
 //   td2,

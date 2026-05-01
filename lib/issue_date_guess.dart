@@ -1,44 +1,52 @@
-
 import 'my_ocr_handler.dart';
 
 class IssueDateGuess {
-  final String yymmdd;     // raw YYMMDD found
+  final String yymmdd; // raw YYMMDD found
   final DateTime fullDate; // expanded to yyyy-mm-dd (heuristic)
-  final String source;     // where we found it (segment info)
+  final String source; // where we found it (segment info)
   final double confidence; // 0..1
   IssueDateGuess(this.yymmdd, this.fullDate, this.source, this.confidence);
 }
 
 int _mrzCheck(String s) {
-  const w = [7,3,1];
+  const w = [7, 3, 1];
   int sum = 0;
   for (var i = 0; i < s.length; i++) {
     final c = s.codeUnitAt(i);
-    final v = (c >= 48 && c <= 57) ? c - 48 : (c >= 65 && c <= 90) ? c - 65 + 10 : 0;
+    final v =
+        (c >= 48 && c <= 57)
+            ? c - 48
+            : (c >= 65 && c <= 90)
+            ? c - 65 + 10
+            : 0;
     sum += v * w[i % 3];
   }
   return sum % 10;
 }
 
 DateTime? _safeDate(int y, int m, int d) {
-  try { return DateTime(y, m, d); } catch (_) { return null; }
+  try {
+    return DateTime(y, m, d);
+  } catch (_) {
+    return null;
+  }
 }
 
 DateTime? _expandYYMMDD(String yymmdd, {DateTime? birth, DateTime? expiry}) {
-  final yy = int.parse(yymmdd.substring(0,2));
-  final mm = int.parse(yymmdd.substring(2,4));
-  final dd = int.parse(yymmdd.substring(4,6));
+  final yy = int.parse(yymmdd.substring(0, 2));
+  final mm = int.parse(yymmdd.substring(2, 4));
+  final dd = int.parse(yymmdd.substring(4, 6));
   final now = DateTime.now();
 
   // Two candidates: 19yy and 20yy
-  final c1 = _safeDate(1900+yy, mm, dd);
-  final c2 = _safeDate(2000+yy, mm, dd);
+  final c1 = _safeDate(1900 + yy, mm, dd);
+  final c2 = _safeDate(2000 + yy, mm, dd);
 
   bool ok(DateTime? dt) {
     if (dt == null) return false;
     if (dt.isAfter(now)) return false;
     if (expiry != null && dt.isAfter(expiry)) return false;
-    if (birth  != null && dt.isBefore(birth)) return false;
+    if (birth != null && dt.isBefore(birth)) return false;
     return true;
   }
 
@@ -64,11 +72,11 @@ DateTime? _expandYYMMDD(String yymmdd, {DateTime? birth, DateTime? expiry}) {
 String _norm(String s) => s.toUpperCase().replaceAll(' ', '<').trim();
 
 /// Collect the "optional" segments by type
-List<(String segment, String source)> _optionalSegments(
-    DocumentStandardType type, String line1, String line2, {String? line3, bool isVisaMRVB = false}
-    ) {
-  line1 = _norm(line1); line2 = _norm(line2); line3 = _norm(line3 ?? '');
-  final out = <(String,String)>[];
+List<(String segment, String source)> _optionalSegments(DocumentStandardType type, String line1, String line2, {String? line3, bool isVisaMRVB = false}) {
+  line1 = _norm(line1);
+  line2 = _norm(line2);
+  line3 = _norm(line3 ?? '');
+  final out = <(String, String)>[];
 
   if (type == DocumentStandardType.td3) {
     // TD3: line2[28..43) (15 chars)
@@ -90,21 +98,9 @@ List<(String segment, String source)> _optionalSegments(
 
 /// Scan optional segments for a plausible issue date (YYMMDD), avoiding birth/expiry.
 /// Boost confidence if a following check digit matches.
-IssueDateGuess? guessIssueDate({
-  required DocumentStandardType type,
-  required String line1,
-  required String line2,
-  String? line3,
-  bool isVisaMRVB = false,
-  String? birthYYMMDD,
-  String? expiryYYMMDD,
-}) {
-  final birth = (birthYYMMDD != null && RegExp(r'^\d{6}$').hasMatch(birthYYMMDD))
-      ? _expandYYMMDD(birthYYMMDD)
-      : null;
-  final expiry = (expiryYYMMDD != null && RegExp(r'^\d{6}$').hasMatch(expiryYYMMDD))
-      ? _expandYYMMDD(expiryYYMMDD, birth: birth)
-      : null;
+IssueDateGuess? guessIssueDate({required DocumentStandardType type, required String line1, required String line2, String? line3, bool isVisaMRVB = false, String? birthYYMMDD, String? expiryYYMMDD}) {
+  final birth = (birthYYMMDD != null && RegExp(r'^\d{6}$').hasMatch(birthYYMMDD)) ? _expandYYMMDD(birthYYMMDD) : null;
+  final expiry = (expiryYYMMDD != null && RegExp(r'^\d{6}$').hasMatch(expiryYYMMDD)) ? _expandYYMMDD(expiryYYMMDD, birth: birth) : null;
 
   final segs = _optionalSegments(type, line1, line2, line3: line3, isVisaMRVB: isVisaMRVB);
   if (segs.isEmpty) return null;

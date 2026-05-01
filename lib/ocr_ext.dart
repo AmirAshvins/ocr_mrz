@@ -10,21 +10,11 @@ class Geom {
   final double bottom;
   final double width;
   final double height;
-  final double cx;      // center x
-  final double cy;      // center y
-  final double angle;   // radians; 0 = perfectly horizontal
+  final double cx; // center x
+  final double cy; // center y
+  final double angle; // radians; 0 = perfectly horizontal
 
-  Geom({
-    required this.left,
-    required this.top,
-    required this.right,
-    required this.bottom,
-    required this.width,
-    required this.height,
-    required this.cx,
-    required this.cy,
-    required this.angle,
-  });
+  Geom({required this.left, required this.top, required this.right, required this.bottom, required this.width, required this.height, required this.cx, required this.cy, required this.angle});
 }
 
 Geom _geomFromCorners(List<OcrPoint> pts) {
@@ -46,21 +36,12 @@ Geom _geomFromCorners(List<OcrPoint> pts) {
   final p2 = sortedByY[1];
   final angle = (p2.y - p1.y).abs() < 1e-6 ? 0.0 : Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
-  return Geom(
-    left: left,
-    top: top,
-    right: right,
-    bottom: bottom,
-    width: width,
-    height: height,
-    cx: cx,
-    cy: cy,
-    angle: angle,
-  );
+  return Geom(left: left, top: top, right: right, bottom: bottom, width: width, height: height, cx: cx, cy: cy, angle: angle);
 }
 
 // Small math shim (no dart:math name clashes in your files)
 class Math {
   static double atan2(double y, double x) => (y == 0 && x == 0) ? 0 : math.atan2(y, x);
+
   static double abs(double v) => v.abs();
 }

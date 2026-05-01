@@ -1,10 +1,5 @@
-import 'dart:convert';
-import 'dart:developer';
-
 import 'package:camera_kit_plus/camera_kit_plus.dart';
-import 'package:ocr_mrz/enums.dart';
 import 'package:ocr_mrz/my_ocr_handler.dart' hide DocumentStandardType;
-import 'package:ocr_mrz/name_cleaner.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/session_status_class.dart';
 
@@ -194,7 +189,9 @@ class OcrMrzConsensus {
         linesLengthValid: line1 != null,
         expiryDateValid: expiryDate != null,
         nationalityValid: nationality != null,
-        finalCheckValid: docType != "P" || (documentNumber != null && countryCode != null && birthDate != null && firstName != null && personalNumber != null && line1 != null && expiryDate != null && nationality != null),
+        finalCheckValid:
+            docType != "P" ||
+            (documentNumber != null && countryCode != null && birthDate != null && firstName != null && personalNumber != null && line1 != null && expiryDate != null && nationality != null),
       ),
       // fresh; you could pass something smarter here
       checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
@@ -453,7 +450,6 @@ class OcrMrzAggregator {
 
   /// Build consensus values and expose stats/histograms.
   OcrMrzConsensus build({bool maskName = false}) {
-
     String? _pickStr(MajorityCounter<String> c) => c.top()?.$1;
     int _pickCnt(MajorityCounter<String> c) => c.top()?.$2 ?? 0;
 
@@ -480,8 +476,8 @@ class OcrMrzAggregator {
     // log("${FieldStat(consensus: docNo, consensusCount: _pickCnt(_numCheck), histogram: _numCheck.snapshot()).histogram}");
     // log("${FieldStat(consensus: docNumWithCheck, consensusCount: _pickCnt(_numWithCheck), histogram: _numWithCheck.snapshot()).histogram}");
 
-    final mostDocCode = mostCommonFirst2Prefixes(_ocrLinesHistory,country??nat??issuing??'   ');
-    final built=  OcrMrzConsensus(
+    final mostDocCode = mostCommonFirst2Prefixes(_ocrLinesHistory, country ?? nat ?? issuing ?? '   ');
+    final built = OcrMrzConsensus(
       countryCode: country == null ? null : fixAlphaOnlyField(country),
       issuingState: (issuing ?? country) == null ? null : fixAlphaOnlyField((issuing ?? country)!),
       docCode: mostDocCode,
@@ -560,7 +556,7 @@ class OcrMrzAggregator {
       sex: sex,
       numberCheck: numCheck,
       countryCode: country,
-      dateSexStr:"$birthKey$birthCheckKey$sex$expiryKey$expiryCheckKey",
+      dateSexStr: "$birthKey$birthCheckKey$sex$expiryKey$expiryCheckKey",
     );
 
     // return OcrMrzConsensus(
@@ -604,13 +600,13 @@ class OcrMrzAggregator {
     String? _pickStr(MajorityCounter<String> c) => (c.top()?.$1) ?? '';
     int _pickCnt(MajorityCounter<String> c) => c.top()?.$2 ?? 0;
     final List<String> lines = [];
-    var firstName =fixName( _pickStr(_fname)?.replaceAll(" ", "<") ?? '');
-    var lastName =fixName( _pickStr(_lname)?.replaceAll(" ", "<") ?? '');
-    if(firstName.trim().isEmpty && lastName.contains("<")){
+    var firstName = fixName(_pickStr(_fname)?.replaceAll(" ", "<") ?? '');
+    var lastName = fixName(_pickStr(_lname)?.replaceAll(" ", "<") ?? '');
+    if (firstName.trim().isEmpty && lastName.contains("<")) {
       firstName = lastName.split("<").last;
       lastName = lastName.replaceFirst("<${firstName}", "");
     }
-    if(lastName.trim().isEmpty && firstName.contains("<")){
+    if (lastName.trim().isEmpty && firstName.contains("<")) {
       lastName = firstName.split("<").first;
       firstName = firstName.replaceFirst("${lastName}<", "");
     }
@@ -619,15 +615,18 @@ class OcrMrzAggregator {
       lastName = mask(lastName);
     }
 
-
     if (_type == "td1") {
-      String line1 = "${_pickStr(_docCode)?.padRight(2,"<")}${_pickStr(_issuing)}${_pickStr(_docNo)}${_pickStr(_numCheck)}".padRight(30, "<");
+      String line1 = "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${_pickStr(_docNo)}${_pickStr(_numCheck)}".padRight(30, "<");
       String line2 = "${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}${_pickStr(_nat)}".padRight(30, "<");
       String line3 = "${lastName}<<${firstName}".padRight(30, "<");
       lines.addAll([line1, line2, line3]);
     } else if (_type == "td2" || _type == "td3") {
-      String line1 = "${_pickStr(_docCode)?.padRight(2,"<")}${_pickStr(_issuing)}${"${lastName}<<${firstName}"}".padRight(44, "<");
-      String line2 = "${_pickStr(_docNo)?.padRight(9,"<")}${_pickStr(_numCheck)}${_pickStr(_nat)}${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}".padRight(44, "<");
+      String line1 = "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${"${lastName}<<${firstName}"}".padRight(44, "<");
+      String line2 =
+          "${_pickStr(_docNo)?.padRight(9, "<")}${_pickStr(_numCheck)}${_pickStr(_nat)}${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}".padRight(
+            44,
+            "<",
+          );
       lines.addAll([line1, line2]);
     }
     return lines;
@@ -636,6 +635,7 @@ class OcrMrzAggregator {
   String mask(String input) {
     return '*' * input.length;
   }
+
   /// Fix a name string where spaces should be `<`.
   /// Steps:
   /// - Uppercase
@@ -663,11 +663,7 @@ class OcrMrzAggregator {
     s = s.replaceAll(RegExp(r'<{2,}'), '<');
 
     // Split by '<', strip non-letters in each (paranoid), drop short tokens
-    final parts = s
-        .split('<')
-        .map((t) => t.replaceAll(RegExp(r'[^A-Z]'), ''))
-        .where((t) => t.length >= minTokenLen)
-        .toList();
+    final parts = s.split('<').map((t) => t.replaceAll(RegExp(r'[^A-Z]'), '')).where((t) => t.length >= minTokenLen).toList();
 
     if (parts.isEmpty) return '';
     return parts.join('<');
@@ -751,12 +747,8 @@ class OcrMrzAggregator {
   /// - the line has at least 5 chars
   /// - chars 3–5 (index 2..4) equal [last3]
   /// Ties are returned as multiple items. Set [caseSensitive] if needed.
- String? mostCommonFirst2Prefixes(
-      List<List<String>> groups,
-      String last3, {
-        bool caseSensitive = true,
-      }) {
-    if(groups.isEmpty){
+  String? mostCommonFirst2Prefixes(List<List<String>> groups, String last3, {bool caseSensitive = true}) {
+    if (groups.isEmpty) {
       return null;
     }
     final freq = <String, int>{};
@@ -789,5 +781,4 @@ class OcrMrzAggregator {
     // Find the prefix with max count
     return freq.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
   }
-
 }

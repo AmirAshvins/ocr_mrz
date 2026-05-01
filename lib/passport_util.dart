@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
@@ -9,7 +8,6 @@ import 'package:ocr_mrz/orc_mrz_log_class.dart';
 
 import 'ocr_mrz_settings_class.dart';
 import 'travel_doc_util.dart';
-
 
 String _normalizeLine(String line) {
   final map = {
@@ -45,10 +43,10 @@ String _normalizeLine(String line) {
 
 Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? setting, List<NameValidationData>? nameValidations, void Function(OcrMrzLog log)? mrzLogger) {
   List<String> ocrLines = ocrData.lines.map((a) => a.text).toList();
-  final mrzLines = ocrLines.where((a)=>a.length>35 && a.contains("<")).map(_normalizeLine).where((line) => line.length == 44 && line.contains(RegExp(r'<{1,}'))).toList();
-  final rawMrzLines = [...ocrLines.where((a)=>a.length>35 && a.contains("<"))];
+  final mrzLines = ocrLines.where((a) => a.length > 35 && a.contains("<")).map(_normalizeLine).where((line) => line.length == 44 && line.contains(RegExp(r'<{1,}'))).toList();
+  final rawMrzLines = [...ocrLines.where((a) => a.length > 35 && a.contains("<"))];
   if (mrzLines.length < 2) {
-    mrzLogger?.call(OcrMrzLog(rawText: ocrData.text, rawMrzLines: rawMrzLines, fixedMrzLines: mrzLines,validation:OcrMrzValidation(),extractedData: {}));
+    mrzLogger?.call(OcrMrzLog(rawText: ocrData.text, rawMrzLines: rawMrzLines, fixedMrzLines: mrzLines, validation: OcrMrzValidation(), extractedData: {}));
     return null;
   }
 
@@ -93,14 +91,25 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
     final composite = line2.substring(0, 10) + birthDate + birthCheck + expiryDate + expiryCheck + personalNumber + personalCheck;
     final validFinal = _computeMrzCheckDigit(composite) == finalCheck;
 
-
     final validateSettings = setting ?? OcrMrzSetting();
-    final validation = validateMrzLine(line1: line1, line2: line2, otherLines: otherLines, firstName: firstName, lastName: lastName, setting: validateSettings, country: countryCode, nationality: nationality, personalNumber: personalNumber,nameValidations:nameValidations,code:documentCode);
+    final validation = validateMrzLine(
+      line1: line1,
+      line2: line2,
+      otherLines: otherLines,
+      firstName: firstName,
+      lastName: lastName,
+      setting: validateSettings,
+      country: countryCode,
+      nationality: nationality,
+      personalNumber: personalNumber,
+      nameValidations: nameValidations,
+      code: documentCode,
+    );
 
     final resultMap = {
       'line1': line1,
       'line2': line2,
-      'documentCode':documentCode,
+      'documentCode': documentCode,
       'documentType': documentType,
       'countryCode': countryCode,
       'lastName': lastName,
@@ -114,11 +123,10 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
       'valid': validation.toJson(),
       'checkDigits': {'passport': validPassport, 'birth': validBirth, 'expiry': validExpiry, 'optional': validOptional, 'final': validFinal},
       "ocrData": ocrData.toJson(),
-      'format': MrzFormat.TD3.toString().split('.').last
+      'format': MrzFormat.TD3.toString().split('.').last,
     };
 
-
-    mrzLogger?.call(OcrMrzLog(rawText: ocrData.text, rawMrzLines: rawMrzLines, fixedMrzLines: [line1,line2],validation:validation,extractedData: resultMap));
+    mrzLogger?.call(OcrMrzLog(rawText: ocrData.text, rawMrzLines: rawMrzLines, fixedMrzLines: [line1, line2], validation: validation, extractedData: resultMap));
 
     if (firstName.trim().isEmpty && lastName.trim().isEmpty) {
       return null;
@@ -126,13 +134,11 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
 
     // log("----");
 
-
-    if(validation.linesLengthValid){
+    if (validation.linesLengthValid) {
       // log("----1");
       // log("\n$oldLine1\n$oldLine2\n${"-"*50}\n$line1\n$line2\n$validation\n${passportNumber} - ${birthDate} - ${expiryDate} - ${personalNumber}  - ${countryCode} - ${nationality} - ${firstName} ${lastName}");
       // log(validation.toString());
     }
-
 
     if (validateSettings.validateNames && !validation.nameValid) {
       // log("$line1\n$line2");
@@ -180,8 +186,6 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
       // log("----1");
       return null;
     }
-
-
 
     return resultMap;
   } catch (e) {
@@ -253,9 +257,6 @@ String repairMrzLine2Strict(String rawLine) {
     if (line.length < 44) line = line.padRight(44, '<');
     if (line.length > 44) line = line.substring(0, 44);
 
-
-
-
     final birth = line.substring(13, 19);
     final birthCheck = line[19];
     final expiry = line.substring(21, 27);
@@ -269,9 +270,7 @@ String repairMrzLine2Strict(String rawLine) {
     final isExpiryValid = RegExp(r'^\d{6}$').hasMatch(expiry) && _computeMrzCheckDigit(expiry) == expiryCheck;
 
     // Optional validations:
-    final isPersonalValid = personalNum.replaceAll('<', '').isEmpty
-        ? (personalCheck == '0' || personalCheck == '<')
-        : (_computeMrzCheckDigit(personalNum) == personalCheck);
+    final isPersonalValid = personalNum.replaceAll('<', '').isEmpty ? (personalCheck == '0' || personalCheck == '<') : (_computeMrzCheckDigit(personalNum) == personalCheck);
 
     final finalCheckInput = line.substring(0, 10) + line.substring(13, 20) + line.substring(21, 43);
     final isFinalValid = _computeMrzCheckDigit(finalCheckInput) == finalCheck;
@@ -291,17 +290,23 @@ String repairSpecificFields(String line) {
   if (line.length != 44) return line; // safety check
 
   // Fix nationality field (index 10–13)
-  final nat = line.substring(10, 13).split('').map((c) {
-    switch (c) {
-      case '0': return 'O';
-      case '1': return 'I';
-      case '5': return 'S';
-      case '8': return 'B';
-      case '6': return 'G';
-      default: return c;
-    }
-  }).join();
-
+  final nat =
+      line.substring(10, 13).split('').map((c) {
+        switch (c) {
+          case '0':
+            return 'O';
+          case '1':
+            return 'I';
+          case '5':
+            return 'S';
+          case '8':
+            return 'B';
+          case '6':
+            return 'G';
+          default:
+            return c;
+        }
+      }).join();
 
   // Fix personal number field (index 28–42)
   final personalRaw = line.substring(28, 42);
@@ -309,12 +314,10 @@ String repairSpecificFields(String line) {
   final padded = digits.padRight(14, '<').substring(0, 14);
 
   // Build and return new line
-  final result =  line.substring(0, 10) + nat + line.substring(13, 28) + padded + line.substring(42);
+  final result = line.substring(0, 10) + nat + line.substring(13, 28) + padded + line.substring(42);
   // log(" repairSpecificFields\n$line\n$result");
   return result;
 }
-
-
 
 OcrMrzValidation validateMrzLine({
   required String line1,
@@ -337,7 +340,6 @@ OcrMrzValidation validateMrzLine({
     bool isDocCodeValid = DocumentCodeHelper.isValid(docCode);
     validation.docCodeValid = isDocCodeValid;
 
-
     String docNumber = line2.substring(0, 9);
     String docCheck = line2[9];
     bool isDocNumberValid = _computeMrzCheckDigit(docNumber) == docCheck;
@@ -355,11 +357,8 @@ OcrMrzValidation validateMrzLine({
 
     // String personalNumber = personalNumber;
     String personalCheck = line2[42];
-    final isPersonalValid = personalNumber.replaceAll('<', '').isEmpty
-        ? (personalCheck == '0' || personalCheck == '<')
-        : (_computeMrzCheckDigit(personalNumber) == personalCheck);
+    final isPersonalValid = personalNumber.replaceAll('<', '').isEmpty ? (personalCheck == '0' || personalCheck == '<') : (_computeMrzCheckDigit(personalNumber) == personalCheck);
     validation.personalNumberValid = isPersonalValid;
-
 
     String finalCheck = line2[43];
     bool isFinalCheckValid = _computeMrzCheckDigit(docNumber + docCheck + birthDate + birthCheck + expiryDate + expiryCheck + personalNumber + personalCheck) == finalCheck;
@@ -368,13 +367,12 @@ OcrMrzValidation validateMrzLine({
     bool validNames = validateNames(firstName, lastName, otherLines);
     bool isNamesValid = validNames;
     validation.nameValid = isNamesValid;
-    if(!isNamesValid && nameValidations!=null){
-      if(nameValidations.any((a)=>a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase()==lastName.toLowerCase())){
+    if (!isNamesValid && nameValidations != null) {
+      if (nameValidations.any((a) => a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase() == lastName.toLowerCase())) {
         isNamesValid = true;
         validation.nameValid = true;
       }
     }
-
 
     bool validCountry = isValidMrzCountry(country);
     bool isValidCountry = validCountry;

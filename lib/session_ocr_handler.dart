@@ -1,14 +1,12 @@
 import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
 import 'package:ocr_mrz/mrz_result_class_fix.dart';
 import 'package:ocr_mrz/my_name_handler.dart';
 import 'package:ocr_mrz/session_status_class.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
-import 'enums.dart';
 import 'ocr_mrz_settings_class.dart';
 
 final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
@@ -119,17 +117,37 @@ class SessionOcrHandler {
             if (isValidMrzCountry(nationalityStr) || isValidMrzCountry(fixedNationalityStr)) {
               var currentVal = updatedSession.validation ?? OcrMrzValidation();
               currentVal.nationalityValid = isValidMrzCountry(nationalityStr) || isValidMrzCountry(fixedNationalityStr);
-              updatedSession = updatedSession.copyWith(step: 3, details: 'Found nationality', nationality: nationalityStr, type: type, line1: line1, line2: normalize(l), line3: line3, validation: currentVal);
+              updatedSession = updatedSession.copyWith(
+                step: 3,
+                details: 'Found nationality',
+                nationality: nationalityStr,
+                type: type,
+                line1: line1,
+                line2: normalize(l),
+                line3: line3,
+                validation: currentVal,
+              );
             }
 
             // final fixedNationalityStr = fixAlphaOnlyField(nationalityStr);
             if (isValidMrzCountry(nationalityStr)) {
               var currentVal = updatedSession.validation ?? OcrMrzValidation();
               currentVal.nationalityValid = isValidMrzCountry(nationalityStr);
-              updatedSession = updatedSession.copyWith(step: 3, details: 'Found nationality', nationality: nationalityStr, type: type, line1: line1, line2: normalize(l), line3: line3, validation: currentVal);
+              updatedSession = updatedSession.copyWith(
+                step: 3,
+                details: 'Found nationality',
+                nationality: nationalityStr,
+                type: type,
+                line1: line1,
+                line2: normalize(l),
+                line3: line3,
+                validation: currentVal,
+              );
             }
           } else {
-            updatedSession = updatedSession.copyWith(logDetails: "Did not found valid Nationality before $birth or after $exp in\n${lines.where((a) => a.contains(birth) || a.contains(exp)).map((b) => normalize(b)).join("\n")}");
+            updatedSession = updatedSession.copyWith(
+              logDetails: "Did not found valid Nationality before $birth or after $exp in\n${lines.where((a) => a.contains(birth) || a.contains(exp)).map((b) => normalize(b)).join("\n")}",
+            );
             // log("not valid nat ${nationalityStr} in ${lines.map((a) => normalize(a)).join("\n")}");
           }
         }
@@ -305,16 +323,24 @@ class SessionOcrHandler {
 
       if (updatedSession.step == 4) {
         if (updatedSession.type == "td1") {
-          if(lines.length>2){
+          if (lines.length > 2) {
             String line3 = lines[2];
             MrzName? name = parseNamesTd1(line3);
             String firstName = name.givenNames.join(" ");
             String lastName = name.surname;
             List<String> otherLines = [...lines.where((a) => a != line3).map((a) => normalize(a))];
             var currentVal = updatedSession.validation ?? OcrMrzValidation();
-            var(a,_,__) = name.validateNames(otherLines,OcrMrzSetting(nameValidationMode: NameValidationMode.exact),[]);
+            var (a, _, __) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
             currentVal.nameValid = a;
-            updatedSession = updatedSession.copyWith(step: 5, details: 'Found names', line3: normalize(line3), firstName: firstName, lastName: lastName, validation: currentVal, logDetails: "Found Name: $firstName  $lastName");
+            updatedSession = updatedSession.copyWith(
+              step: 5,
+              details: 'Found names',
+              line3: normalize(line3),
+              firstName: firstName,
+              lastName: lastName,
+              validation: currentVal,
+              logDetails: "Found Name: $firstName  $lastName",
+            );
           }
         } else {
           String line1Start = updatedSession.docCode! + updatedSession.countryCode!;
@@ -326,9 +352,17 @@ class SessionOcrHandler {
               String lastName = name.surname;
               List<String> otherLines = [...lines.where((a) => a != l).map((a) => normalize(a))];
               var currentVal = updatedSession.validation ?? OcrMrzValidation();
-              var(a,_,__)= name.validateNames(otherLines,OcrMrzSetting(nameValidationMode: NameValidationMode.exact),[]);
+              var (a, _, __) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
               currentVal.nameValid = a;
-              updatedSession = updatedSession.copyWith(step: 5, details: 'Found names', line1: normalize(l), firstName: firstName, lastName: lastName, validation: currentVal, logDetails: "Found Name: $firstName  $lastName");
+              updatedSession = updatedSession.copyWith(
+                step: 5,
+                details: 'Found names',
+                line1: normalize(l),
+                firstName: firstName,
+                lastName: lastName,
+                validation: currentVal,
+                logDetails: "Found Name: $firstName  $lastName",
+              );
             }
           }
         }

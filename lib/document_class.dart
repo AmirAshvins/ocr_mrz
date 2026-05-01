@@ -30,7 +30,7 @@ class OcrMrzDocumentDetail {
   const OcrMrzDocumentDetail({
     this.documentNumber,
     this.shortType,
-    this.suggestionCodes = const[],
+    this.suggestionCodes = const [],
     this.fullName,
     this.firstName,
     this.lastName,
@@ -92,7 +92,7 @@ class OcrMrzDocumentDetail {
       ocrText: identical(ocrText, _unset) ? this.ocrText : ocrText as String?,
       shortType: identical(shortType, _unset) ? this.shortType : shortType as String?,
       docCode: identical(docCode, _unset) ? this.docCode : docCode as String?,
-      suggestionCodes: identical(suggestionCodes, _unset) ? this.suggestionCodes : ((suggestionCodes??[]) as List).map((a)=>a.toString()).toList() as List<String>,
+      suggestionCodes: identical(suggestionCodes, _unset) ? this.suggestionCodes : ((suggestionCodes ?? []) as List).map((a) => a.toString()).toList() as List<String>,
       sex: identical(sex, _unset) ? this.sex : sex as String?,
       verifiedDocNum: identical(verifiedDocNum, _unset) ? this.verifiedDocNum : verifiedDocNum as bool,
       verifiedDocCode: identical(verifiedDocCode, _unset) ? this.verifiedDocCode : verifiedDocCode as bool,
@@ -119,6 +119,7 @@ class OcrMrzDocumentDetail {
       verifiedDocNum: json["verifiedDocNum"],
     );
   }
+
   factory OcrMrzDocumentDetail.fromMrzResult(OcrMrzResult res) {
     return OcrMrzDocumentDetail(
       documentNumber: res.documentNumber,
@@ -134,19 +135,20 @@ class OcrMrzDocumentDetail {
       mrz: null,
       ocrText: null,
       shortType: res.documentCode.characters.first,
-      docCode:res.documentCode,
+      docCode: res.documentCode,
       sex: res.sex,
       verifiedDocNum: false,
     );
   }
 
-
   factory OcrMrzDocumentDetail.visa() {
     return OcrMrzDocumentDetail(shortType: "V");
   }
+
   factory OcrMrzDocumentDetail.passport() {
-    return OcrMrzDocumentDetail(shortType: "P",birthDate: DateTime(2000,1,1));
+    return OcrMrzDocumentDetail(shortType: "P", birthDate: DateTime(2000, 1, 1));
   }
+
   factory OcrMrzDocumentDetail.resident() {
     return OcrMrzDocumentDetail(shortType: "I");
   }
@@ -186,20 +188,18 @@ class OcrMrzDocumentDetail {
 
   bool get isPassport => shortType == "P";
 
-  Gender? get gender => Gender.values.firstWhereOrNull((a)=>a.value == sex);
+  Gender? get gender => Gender.values.firstWhereOrNull((a) => a.value == sex);
 
+  Widget get getMrzWidget =>
+      (mrz ?? "").isEmpty || true
+          ? SizedBox()
+          : Container(
+            padding: EdgeInsets.all(4),
+            decoration: BoxDecoration(color: Colors.black.withOpacity(0.08), borderRadius: BorderRadiusGeometry.circular(4)),
+            child: FittedBox(child: Text(censorText(mrz ?? '', (fullName ?? "").split(" ")), style: TextStyle(fontFamily: "Ocr"))),
+          );
 
-  Widget get getMrzWidget => (mrz ?? "").isEmpty || true
-      ? SizedBox()
-      : Container(
-    padding: EdgeInsets.all(4),
-    decoration: BoxDecoration(color: Colors.black.withOpacity(0.08), borderRadius: BorderRadiusGeometry.circular(4)),
-    child: FittedBox(
-      child: Text(censorText(mrz ?? '', (fullName ?? "").split(" ")), style: TextStyle(fontFamily: "Ocr")),
-    ),
-  );
-
-  bool isSameAs(OcrMrzResult res,{List<String?> notThis= const[]}) {
+  bool isSameAs(OcrMrzResult res, {List<String?> notThis = const []}) {
     // log("${res.documentCode} -- ${documentCode?.code}");
     // log("${res.documentNumber} -- ${documentNumber}");
 
@@ -213,7 +213,7 @@ class OcrMrzDocumentDetail {
     if (dc != null && dc.length > 1) {
       match = data!.documentType.lastOrNullWhere((a) => a.type == data!.documentCode.firstWhere((a) => a.type == shortType || a.code == documentCode?.code).type);
     }
-    match ??=  data!.documentType.lastOrNullWhere((a) => a.type == shortType);
+    match ??= data!.documentType.lastOrNullWhere((a) => a.type == shortType);
     // log("match of $dc  - ${shortType}=> ${match?.title}");
     return match;
   }
@@ -225,28 +225,29 @@ class OcrMrzDocumentDetail {
       return null;
     }
     if (dc != null && dc.length > 1) {
-      match =  data!.documentDetailType.lastOrNullWhere(
-            (a) => a.type == docCode?.characters.first && (a.subType == "*" || a.subType == docCode?.characters.last) && (a.country == "*" || a.country == documentIssueCountry?.code3),
+      match = data!.documentDetailType.lastOrNullWhere(
+        (a) => a.type == docCode?.characters.first && (a.subType == "*" || a.subType == docCode?.characters.last) && (a.country == "*" || a.country == documentIssueCountry?.code3),
       );
     }
     return match;
   }
 
-  int get birthDayIndex => birthDate==null?-1 : [
-    DateFormat("MM-dd").format(DateTime.now()),
-    DateFormat("MM-dd").format(DateTime.now().add(Duration(days: 1))),
-    DateFormat("MM-dd").format(DateTime.now().subtract(Duration(days: 1))),
-  ].indexOf(DateFormat("MM-dd").format(birthDate!));
+  int get birthDayIndex =>
+      birthDate == null
+          ? -1
+          : [
+            DateFormat("MM-dd").format(DateTime.now()),
+            DateFormat("MM-dd").format(DateTime.now().add(Duration(days: 1))),
+            DateFormat("MM-dd").format(DateTime.now().subtract(Duration(days: 1))),
+          ].indexOf(DateFormat("MM-dd").format(birthDate!));
 
   bool get isBirthday => birthDayIndex != -1;
-  String get birthdayLabel => !isBirthday?"":["(Today)","(Tomorrow)","(Yesterday)"][birthDayIndex];
 
-
-
+  String get birthdayLabel => !isBirthday ? "" : ["(Today)", "(Tomorrow)", "(Yesterday)"][birthDayIndex];
 }
 
 extension on DateTime? {
-  get yyyyMMdd =>  this == null ? "" : DateFormat("yyyy-MM-dd").format(this!);
+  get yyyyMMdd => this == null ? "" : DateFormat("yyyy-MM-dd").format(this!);
 }
 
 extension FirstWhereExt<T> on Iterable<T> {
@@ -273,7 +274,6 @@ extension IterableLastOrNullWhere<E> on Iterable<E> {
   }
 }
 
-
 String censorText(String input, List<String> forbidden) {
   for (final word in forbidden) {
     input = input.replaceAll(word, '*' * word.length);
@@ -297,7 +297,4 @@ String? formatDate(DateTime? date) {
   return "${date.year.toString().padLeft(4, '0')}-"
       "${date.month.toString().padLeft(2, '0')}-"
       "${date.day.toString().padLeft(2, '0')}";
-
-
 }
-

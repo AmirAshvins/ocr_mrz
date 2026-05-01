@@ -10,7 +10,12 @@ class ApiResponse {
   const ApiResponse({required this.success, required this.errorCode, required this.message, this.response});
 
   factory ApiResponse.fromJson(Map<String, dynamic> json) {
-    return ApiResponse(success: json['success'] ?? false, errorCode: json['errorCode'] ?? 0, message: json['message'] ?? '', response: json['response'] != null ? DocumentScanResponse.fromJson(json['response']) : null);
+    return ApiResponse(
+      success: json['success'] ?? false,
+      errorCode: json['errorCode'] ?? 0,
+      message: json['message'] ?? '',
+      response: json['response'] != null ? DocumentScanResponse.fromJson(json['response']) : null,
+    );
   }
 
   OcrMrzResult toOcrMrzResult() {
@@ -18,18 +23,18 @@ class ApiResponse {
       line1: '',
       line2: '',
       format: '',
-      documentCode: response?.type.value??'',
-      documentType: "${response?.type.value??''}${ response?.subType.value??''}",
+      documentCode: response?.type.value ?? '',
+      documentType: "${response?.type.value ?? ''}${response?.subType.value ?? ''}",
       mrzFormat: '',
-      countryCode: '${response?.issueCountry.value??''}',
-      issuingState: '${response?.issueCountry.value??''}',
-      lastName: '${response?.lastName.value??response?.fullname.value??''}',
-      firstName: '${response?.firstName.value??''}',
-      documentNumber: '${response?.documentNumber.value??''}',
-      nationality: '${response?.nationality.value??''}',
-      birthDate: DateTime.tryParse('${response?.birthDate.value??''}'),
-      expiryDate: DateTime.tryParse('${response?.expiryDate.value??''}'),
-      sex: '${response?.gender.value??''}',
+      countryCode: '${response?.issueCountry.value ?? ''}',
+      issuingState: '${response?.issueCountry.value ?? ''}',
+      lastName: '${response?.lastName.value ?? response?.fullname.value ?? ''}',
+      firstName: '${response?.firstName.value ?? ''}',
+      documentNumber: '${response?.documentNumber.value ?? ''}',
+      nationality: '${response?.nationality.value ?? ''}',
+      birthDate: DateTime.tryParse('${response?.birthDate.value ?? ''}'),
+      expiryDate: DateTime.tryParse('${response?.expiryDate.value ?? ''}'),
+      sex: '${response?.gender.value ?? ''}',
       personalNumber: '',
       optionalData: '',
       valid: OcrMrzValidation(),
@@ -39,7 +44,7 @@ class ApiResponse {
       eDataCheck: response?.expiryDate.checkDigit,
       numberCheck: response?.documentNumber.checkDigit,
       birthStr: response?.birthDate.value,
-      expStr: response?.expiryDate.value
+      expStr: response?.expiryDate.value,
     );
   }
 }
@@ -49,10 +54,10 @@ class ConfidenceField {
   final String? checkDigit;
   final int percent;
 
-  const ConfidenceField({this.value, required this.percent,this.checkDigit});
+  const ConfidenceField({this.value, required this.percent, this.checkDigit});
 
   factory ConfidenceField.fromJson(Map<String, dynamic> json) {
-    return ConfidenceField(value: json['value']?.toString(), percent: json['percent'] ?? 0,checkDigit: json["checkDigit"]);
+    return ConfidenceField(value: json['value']?.toString(), percent: json['percent'] ?? 0, checkDigit: json["checkDigit"]);
   }
 }
 

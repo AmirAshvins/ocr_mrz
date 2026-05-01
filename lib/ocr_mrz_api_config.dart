@@ -32,14 +32,5 @@ class OcrMrzApiConfig {
   /// If null, the original width is used. Only used if [attachPhoto] is true.
   final int? photoMaxWidth;
 
-
-  OcrMrzApiConfig({
-    required this.url,
-    required this.headers,
-    required this.bodyBuilder,
-    required this.interval,
-    this.attachPhoto = false,
-    this.photoQuality = 85,
-    this.photoMaxWidth,
-  });
+  OcrMrzApiConfig({required this.url, required this.headers, required this.bodyBuilder, required this.interval, this.attachPhoto = false, this.photoQuality = 85, this.photoMaxWidth});
 }

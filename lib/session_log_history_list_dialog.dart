@@ -16,7 +16,7 @@ class SessionLogHistoryListDialog extends StatelessWidget {
               itemCount: historyList.length,
               itemBuilder: (c, i) {
                 SessionStatus s = historyList[i];
-                return ListTile(title: Text("$s"),subtitle: Text(s.logDetails??''),);
+                return ListTile(title: Text("$s"), subtitle: Text(s.logDetails ?? ''));
               },
             ),
           ),

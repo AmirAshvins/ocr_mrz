@@ -250,7 +250,14 @@ String fixAlphaOnlyField(String value) {
   return value.toUpperCase().split('').map((c) => map[c] ?? c).join();
 }
 
-Map<String, dynamic>? _parseTd1({required String l1, required String l2, required String l3, required List<String> otherLines, required OcrMrzSetting validateSettings, required List<NameValidationData>? nameValidations}) {
+Map<String, dynamic>? _parseTd1({
+  required String l1,
+  required String l2,
+  required String l3,
+  required List<String> otherLines,
+  required OcrMrzSetting validateSettings,
+  required List<NameValidationData>? nameValidations,
+}) {
   try {
     // Line1 (30):
     // [0..2) docType(2), [2..5) issuingState(3), [5..14) docNo(9), [14] docChk, [15..30) opt1
@@ -291,7 +298,8 @@ Map<String, dynamic>? _parseTd1({required String l1, required String l2, require
 
     final namesOk =
         validateSettings.validateNames
-            ? (_validateNames(firstName, lastName, otherLines) || (nameValidations?.any((a) => a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase() == lastName.toLowerCase()) ?? false))
+            ? (_validateNames(firstName, lastName, otherLines) ||
+                (nameValidations?.any((a) => a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase() == lastName.toLowerCase()) ?? false))
             : true;
 
     final issuingOk = !validateSettings.validateCountry || isValidMrzCountry(issuingState);
@@ -375,7 +383,7 @@ Map<String, dynamic>? _parseTd1({required String l1, required String l2, require
       'personalNumber': opt2.isNotEmpty ? opt2 : opt1,
       'valid': {
         'docNumberValid': vDoc,
-        'docCodeValid':docCodeValid,
+        'docCodeValid': docCodeValid,
         'birthDateValid': vBirth,
         'expiryDateValid': vExpiry,
         'personalNumberValid': true, // no direct check digit for optional
@@ -498,7 +506,13 @@ Map<String, dynamic>? tryParseTD2FromOcrLines(OcrData ocrData, OcrMrzSetting? se
   return _findTd2PairAndParse(normalized: normalized, rawAllLines: raw, validateSettings: s, nameValidations: nameValidations, ocr: ocrData);
 }
 
-Map<String, dynamic>? _findTd2PairAndParse({required List<String> normalized, required List<String> rawAllLines, required OcrMrzSetting validateSettings, required List<NameValidationData>? nameValidations, required OcrData ocr}) {
+Map<String, dynamic>? _findTd2PairAndParse({
+  required List<String> normalized,
+  required List<String> rawAllLines,
+  required OcrMrzSetting validateSettings,
+  required List<NameValidationData>? nameValidations,
+  required OcrData ocr,
+}) {
   if (normalized.length < 3) {
     return null;
   }
@@ -603,7 +617,13 @@ bool _looksLikeTd2Line2(String l2) {
   return vDoc && vBirth && vExpiry && vNat && vSex;
 }
 
-Map<String, dynamic>? _parseTd2({required String l1, required String l2, required List<String> otherLines, required OcrMrzSetting validateSettings, required List<NameValidationData>? nameValidations}) {
+Map<String, dynamic>? _parseTd2({
+  required String l1,
+  required String l2,
+  required List<String> otherLines,
+  required OcrMrzSetting validateSettings,
+  required List<NameValidationData>? nameValidations,
+}) {
   try {
     // Line1 (36): [0..2) docType(2), [2..5) issuingState(3), [5..) names
     final documentType = l1.substring(0, 1); // first char
@@ -639,7 +659,8 @@ Map<String, dynamic>? _parseTd2({required String l1, required String l2, require
 
     final namesOk =
         validateSettings.validateNames
-            ? (_validateNames(firstName, lastName, otherLines) || (nameValidations?.any((a) => a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase() == lastName.toLowerCase()) ?? false))
+            ? (_validateNames(firstName, lastName, otherLines) ||
+                (nameValidations?.any((a) => a.firstName.toLowerCase() == firstName.toLowerCase() && a.lastName.toLowerCase() == lastName.toLowerCase()) ?? false))
             : true;
 
     final issuingOk = !validateSettings.validateCountry || isValidMrzCountry(issuingState);

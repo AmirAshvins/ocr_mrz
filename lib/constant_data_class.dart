@@ -1,9 +1,3 @@
-import 'dart:convert';
-import 'dart:developer';
-import 'dart:ui';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-
 import 'const_data_json.dart';
 
 class ConstData {
@@ -69,7 +63,8 @@ class DocumentAirport {
 
   DocumentAirport({required this.type, required this.code3, required this.name, required this.country});
 
-  DocumentAirport copyWith({String? type, String? code3, String? name, String? country}) => DocumentAirport(type: type ?? this.type, code3: code3 ?? this.code3, name: name ?? this.name, country: country ?? this.country);
+  DocumentAirport copyWith({String? type, String? code3, String? name, String? country}) =>
+      DocumentAirport(type: type ?? this.type, code3: code3 ?? this.code3, name: name ?? this.name, country: country ?? this.country);
 
   factory DocumentAirport.fromJson(Map<String, dynamic> json) => DocumentAirport(type: json["type"], code3: json["code3"], name: json["name"], country: json["country"]);
 
@@ -87,7 +82,8 @@ class DocumentCountry {
 
   DocumentCountry({required this.type, required this.code2, required this.code3, required this.name});
 
-  DocumentCountry copyWith({String? type, String? code2, String? code3, String? name}) => DocumentCountry(type: type ?? this.type, code2: code2 ?? this.code2, code3: code3 ?? this.code3, name: name ?? this.name);
+  DocumentCountry copyWith({String? type, String? code2, String? code3, String? name}) =>
+      DocumentCountry(type: type ?? this.type, code2: code2 ?? this.code2, code3: code3 ?? this.code3, name: name ?? this.name);
 
   factory DocumentCountry.fromJson(Map<String, dynamic> json) => DocumentCountry(type: json["type"], code2: json["code2"], code3: json["code3"] ?? '', name: json["name"]);
 
@@ -124,10 +120,17 @@ class OcrMrzDocumentDetailType {
 
   OcrMrzDocumentDetailType({required this.type, required this.subType, required this.country, required this.title, required this.code, this.note});
 
-  OcrMrzDocumentDetailType copyWith({String? type, String? subType, String? country, String? title, String? code, String? note}) =>
-      OcrMrzDocumentDetailType(type: type ?? this.type, subType: subType ?? this.subType, country: country ?? this.country, title: title ?? this.title, code: code ?? this.code, note: note ?? this.note);
+  OcrMrzDocumentDetailType copyWith({String? type, String? subType, String? country, String? title, String? code, String? note}) => OcrMrzDocumentDetailType(
+    type: type ?? this.type,
+    subType: subType ?? this.subType,
+    country: country ?? this.country,
+    title: title ?? this.title,
+    code: code ?? this.code,
+    note: note ?? this.note,
+  );
 
-  factory OcrMrzDocumentDetailType.fromJson(Map<String, dynamic> json) => OcrMrzDocumentDetailType(type: json["type"], subType: json["subType"], country: json["country"], title: json["title"], code: json["code"], note: json["note"]);
+  factory OcrMrzDocumentDetailType.fromJson(Map<String, dynamic> json) =>
+      OcrMrzDocumentDetailType(type: json["type"], subType: json["subType"], country: json["country"], title: json["title"], code: json["code"], note: json["note"]);
 
   Map<String, dynamic> toJson() => {"type": type, "subType": subType, "country": country, "title": title, "code": code, "note": note};
 }
@@ -140,7 +143,8 @@ class OcrMrzDocumentType {
 
   OcrMrzDocumentType({required this.type, required this.color, required this.title, required this.code});
 
-  OcrMrzDocumentType copyWith({String? type, String? color, String? title, String? code}) => OcrMrzDocumentType(type: type ?? this.type, color: color ?? this.color, title: title ?? this.title, code: code ?? this.code);
+  OcrMrzDocumentType copyWith({String? type, String? color, String? title, String? code}) =>
+      OcrMrzDocumentType(type: type ?? this.type, color: color ?? this.color, title: title ?? this.title, code: code ?? this.code);
 
   factory OcrMrzDocumentType.fromJson(Map<String, dynamic> json) => OcrMrzDocumentType(type: json["type"], color: json["color"], title: json["title"], code: json["code"]);
 

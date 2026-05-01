@@ -14,13 +14,7 @@ class MrzCheckDigitResult {
   final bool optionalData;
   final bool finalComposite;
 
-  MrzCheckDigitResult({
-    required this.documentNumber,
-    required this.birthDate,
-    required this.expiryDate,
-    required this.optionalData,
-    required this.finalComposite,
-  });
+  MrzCheckDigitResult({required this.documentNumber, required this.birthDate, required this.expiryDate, required this.optionalData, required this.finalComposite});
 }
 
 /// Holds the final, validated data parsed from an MRZ.
@@ -33,7 +27,7 @@ class MrzResult {
   final String countryCode;
   final String issuingState;
   final String documentNumber;
-  
+
   // Personal details
   final String lastName;
   final String firstName;
@@ -41,7 +35,7 @@ class MrzResult {
   final String sex;
   final DateTime expiryDate;
   final String nationality;
-  
+
   // Optional/Additional data
   final String? optionalData1;
   final String? optionalData2;

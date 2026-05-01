@@ -156,58 +156,75 @@ class _OcrSettingDialogState extends State<OcrSettingDialog> {
                   ],
                 ),
                 Divider(),
-                Padding(padding: EdgeInsets.symmetric(vertical: 4),child: Row(
-                  children: [
-                    Text("Rotation"),
-                    Expanded(
-                      child: CupertinoSegmentedControl<int>(
-                        groupValue: tmp.rotation,
-                        children: {
-                          0: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("0")), RotatedBox(quarterTurns: 0, child: Icon(Icons.portrait_rounded, size: 15))]),
-                          90: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("90")), RotatedBox(quarterTurns: 3, child: Icon(Icons.portrait_rounded, size: 15))]),
-                          180: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("180")), RotatedBox(quarterTurns: 2, child: Icon(Icons.portrait_rounded, size: 15))]),
-                          270: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("270")), RotatedBox(quarterTurns: 1, child: Icon(Icons.portrait_rounded, size: 15))]),
-                        },
-                        onValueChanged: (a) {
-                          tmp = tmp.copyWith(rotation: a);
-                          setState(() {});
-                        },
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Text("Rotation"),
+                      Expanded(
+                        child: CupertinoSegmentedControl<int>(
+                          groupValue: tmp.rotation,
+                          children: {
+                            0: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("0")), RotatedBox(quarterTurns: 0, child: Icon(Icons.portrait_rounded, size: 15))]),
+                            90: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("90")), RotatedBox(quarterTurns: 3, child: Icon(Icons.portrait_rounded, size: 15))]),
+                            180: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("180")), RotatedBox(quarterTurns: 2, child: Icon(Icons.portrait_rounded, size: 15))]),
+                            270: Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("270")), RotatedBox(quarterTurns: 1, child: Icon(Icons.portrait_rounded, size: 15))]),
+                          },
+                          onValueChanged: (a) {
+                            tmp = tmp.copyWith(rotation: a);
+                            setState(() {});
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),),
+                    ],
+                  ),
+                ),
                 Divider(),
-                Padding(padding: EdgeInsets.symmetric(vertical: 4),child: Row(
-                  children: [
-                    Text("Parse Algorithm"),
-                    Expanded(
-                      child: CupertinoSegmentedControl<ParseAlgorithm>(
-                        groupValue: tmp.algorithm,
-                        children: Map.fromIterable(ParseAlgorithm.values,key: (a)=>a,value:(a)=>Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("${(a as ParseAlgorithm).toString()}"))]),),
-                        onValueChanged: (a) {
-                          tmp = tmp.copyWith(algorithm: a);
-                          setState(() {});
-                        },
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Text("Parse Algorithm"),
+                      Expanded(
+                        child: CupertinoSegmentedControl<ParseAlgorithm>(
+                          groupValue: tmp.algorithm,
+                          children: Map.fromIterable(
+                            ParseAlgorithm.values,
+                            key: (a) => a,
+                            value: (a) => Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("${(a as ParseAlgorithm).toString()}"))]),
+                          ),
+                          onValueChanged: (a) {
+                            tmp = tmp.copyWith(algorithm: a);
+                            setState(() {});
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),),
+                    ],
+                  ),
+                ),
                 Divider(),
-                Padding(padding: EdgeInsets.symmetric(vertical: 4),child: Row(
-                  children: [
-                    Text("Name"),
-                    Expanded(
-                      child: CupertinoSegmentedControl<NameValidationMode>(
-                        groupValue: tmp.nameValidationMode,
-                        children: Map.fromIterable(NameValidationMode.values,key: (a)=>a,value:(a)=>Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("${(a as NameValidationMode).toString()}"))]),),
-                        onValueChanged: (a) {
-                          tmp = tmp.copyWith(nameValidationMode: a);
-                          setState(() {});
-                        },
+                Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Text("Name"),
+                      Expanded(
+                        child: CupertinoSegmentedControl<NameValidationMode>(
+                          groupValue: tmp.nameValidationMode,
+                          children: Map.fromIterable(
+                            NameValidationMode.values,
+                            key: (a) => a,
+                            value: (a) => Row(children: [Padding(padding: EdgeInsets.symmetric(horizontal: 2), child: Text("${(a as NameValidationMode).toString()}"))]),
+                          ),
+                          onValueChanged: (a) {
+                            tmp = tmp.copyWith(nameValidationMode: a);
+                            setState(() {});
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),),
+                    ],
+                  ),
+                ),
                 Divider(),
                 Row(
                   children: [

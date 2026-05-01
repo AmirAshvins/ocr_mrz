@@ -21,8 +21,6 @@ class MrzName {
   final List<String> givenNames; // pretty
   final String full; // "ERIKSSON ANNA MARIA"
 
-
-
   MrzName({required this.rawSurname, required this.rawGivenNames, required this.surname, required this.givenNames, required this.full});
 
   String get firstName => givenNames.join(" ");
@@ -77,12 +75,12 @@ class MrzName {
 
       final nameValidation = names.any(
         (a) =>
-            "${a.firstName} ${a.lastName} ${a.middleName ?? ''}".toUpperCase().split(" ").any((b) => firstName.split(" ").every((fn)=>b.contains(fn.toUpperCase()))) ||
-            "${a.firstName} ${a.lastName} ${a.middleName ?? ''}".toUpperCase().split(" ").any((b) => lastName.split(" ").every((ln)=>b.contains(ln.toUpperCase()))),
+            "${a.firstName} ${a.lastName} ${a.middleName ?? ''}".toUpperCase().split(" ").any((b) => firstName.split(" ").every((fn) => b.contains(fn.toUpperCase()))) ||
+            "${a.firstName} ${a.lastName} ${a.middleName ?? ''}".toUpperCase().split(" ").any((b) => lastName.split(" ").every((ln) => b.contains(ln.toUpperCase()))),
       );
       if (nameValidation) {
         return (true, 'provided_list', this);
-      }else{
+      } else {
         if (names.isNotEmpty) {
           final nameValidation = names.firstWhereOrNull((a) => noKcomparisonContain(a, firstname: firstName, lastname: lastName));
 
@@ -97,7 +95,6 @@ class MrzName {
             }
           }
         }
-
       }
 
       return (false, 'failed', this);
@@ -158,7 +155,7 @@ MrzName parseMrzNames(DocumentStandardType type, List<String> lines) {
 
 bool noKcomparison(NameValidationData base, {String firstname = "", String lastname = '', String middlename = ""}) {
   String fake = "${lastname}${middlename}${firstname}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
-  String fullname = "${base.lastName}${base.middleName??''}${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
+  String fullname = "${base.lastName}${base.middleName ?? ''}${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
 
   print("comparing noKcomparison ==> ${fake} vs $fullname");
   return fake == fullname;
@@ -167,9 +164,9 @@ bool noKcomparison(NameValidationData base, {String firstname = "", String lastn
 bool noKcomparisonContain(NameValidationData base, {String firstname = "", String lastname = '', String middlename = ""}) {
   String fake = "${lastname}${middlename}${firstname}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
   List<String> fakeSplit = "${lastname}|${middlename}|${firstname}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase().split("|");
-  String fullname = "${base.lastName}${base.middleName??''}${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
-  List<String> fullnameSplit = "${base.lastName}|${base.middleName??''}|${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase().split("|");
+  String fullname = "${base.lastName}${base.middleName ?? ''}${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase();
+  List<String> fullnameSplit = "${base.lastName}|${base.middleName ?? ''}|${base.firstName}".replaceAll("k", '').replaceAll("K", '').replaceAll(" ", '').toLowerCase().split("|");
 
   print("comparing noKcomparison ==> ${fake} vs $fullname");
-  return fullnameSplit.every((a) => fake.contains(a)) || fakeSplit.every((a)=>fullname.contains(a));
+  return fullnameSplit.every((a) => fake.contains(a)) || fakeSplit.every((a) => fullname.contains(a));
 }

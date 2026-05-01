@@ -11,11 +11,8 @@ class NameValidationData {
 
   Map<String, dynamic> toJson() => {"lastName": lastName, "firstName": firstName, "middleName": middleName};
 
+  String get fullname => "${firstName}${middleName} ${lastName}";
 
-  String get fullname =>"${firstName}${middleName} ${lastName}";
-  MrzName toMrzName() =>  MrzName(rawSurname: lastName,
-      rawGivenNames: firstName.split(" ").toList(),
-      surname: lastName,
-      givenNames: firstName.split(" ").toList(),
-      full: "$lastName $middleName $firstName");
+  MrzName toMrzName() =>
+      MrzName(rawSurname: lastName, rawGivenNames: firstName.split(" ").toList(), surname: lastName, givenNames: firstName.split(" ").toList(), full: "$lastName $middleName $firstName");
 }
