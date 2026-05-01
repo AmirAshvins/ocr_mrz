@@ -454,7 +454,7 @@ Map<String, dynamic>? _parseVisaCommon({
     final rawMrzLines = rawAllLines.where((a)=>a.length>35 && a.contains("<<")).toList();
     mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: [line1,line2],validation:validation,extractedData: resultMap));
 
-    if (firstName.isEmpty || lastName.isEmpty) return null;
+    if (firstName.isEmpty && lastName.isEmpty) return null;
 
     log(validation.toString());
     // Build result similar to your passport result

@@ -120,7 +120,7 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
 
     mrzLogger?.call(OcrMrzLog(rawText: ocrData.text, rawMrzLines: rawMrzLines, fixedMrzLines: [line1,line2],validation:validation,extractedData: resultMap));
 
-    if (firstName.trim().isEmpty || lastName.trim().isEmpty) {
+    if (firstName.trim().isEmpty && lastName.trim().isEmpty) {
       return null;
     }
 
@@ -427,8 +427,8 @@ bool validateNames(String firstName, String lastName, Iterable<String> lines) {
   for (var l in lines) {
     words.addAll(extractWords(l).map((a) => a.toLowerCase()));
   }
-  final isFirstNameValid = firstName.toLowerCase().split(" ").every((a) => words.contains(a.toLowerCase()));
-  final isLastNameValid = lastName.toLowerCase().split(" ").every((a) => words.contains(a.toLowerCase()));
+  final isFirstNameValid = firstName.trim().isEmpty || firstName.toLowerCase().split(" ").every((a) => words.contains(a.toLowerCase()));
+  final isLastNameValid = lastName.trim().isEmpty || lastName.toLowerCase().split(" ").every((a) => words.contains(a.toLowerCase()));
   final res = isLastNameValid && isFirstNameValid;
 
   return res;

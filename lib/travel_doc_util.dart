@@ -282,7 +282,7 @@ Map<String, dynamic>? _parseTd1({required String l1, required String l2, require
     String firstName = nameParts.length > 1 ? nameParts[1].replaceAll('<', ' ').trim() : '';
     lastName = _cleanName(lastName);
     firstName = _cleanName(firstName);
-    if (firstName.isEmpty || lastName.isEmpty) return null;
+    if (firstName.isEmpty && lastName.isEmpty) return null;
 
     // Validations
     final vDoc = _computeMrzCheckDigit(docNo) == docChk;
@@ -615,7 +615,7 @@ Map<String, dynamic>? _parseTd2({required String l1, required String l2, require
     String firstName = nameParts.length > 1 ? nameParts[1].replaceAll('<', ' ').trim() : '';
     lastName = _cleanName(lastName);
     firstName = _cleanName(firstName);
-    if (firstName.isEmpty || lastName.isEmpty) return null;
+    if (firstName.isEmpty && lastName.isEmpty) return null;
 
     // Line2 (36):
     // [0..9) docNo, [9] docChk, [10..13) nationality, [13..19) birth, [19] birthChk,
