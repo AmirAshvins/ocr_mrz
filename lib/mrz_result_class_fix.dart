@@ -51,6 +51,11 @@ class OcrMrzResult {
   DateTime? expiryDate;
   DateTime? issueDate;
   String sex;
+  String? numberCheck;
+  String? bDataCheck;
+  String? eDataCheck;
+  String? birthStr;
+  String? expStr;
 
   /// Passport’s optional/personal number (TD3). For visas this will mirror [optionalData].
   String personalNumber;
@@ -63,6 +68,7 @@ class OcrMrzResult {
   OcrData ocrData;
   String format;
 
+
   /// The duration from the start of the session until the result was found.
   /// This is a runtime value and not part of the JSON serialization.
   Duration? scanDuration;
@@ -73,6 +79,8 @@ class OcrMrzResult {
 
   // bool get isPassport => documentType == 'P';
   bool get isPassport => documentCode.startsWith("P");
+
+  String get getFullName => "${firstName} ${lastName}";
 
   String get typeName {
     switch (format) {
@@ -116,6 +124,11 @@ class OcrMrzResult {
     required this.checkDigits,
     required this.ocrData,
     this.scanDuration,
+    this.bDataCheck,
+    this.eDataCheck,
+    this.numberCheck,
+    this.birthStr,
+    this.expStr,
   });
 
   /// Robust factory that accepts both the old (passport-only) JSON and the new visa-aware JSON.
@@ -267,6 +280,16 @@ class OcrMrzResult {
       verifiedDocNum: false,
     );
     return documentDetail;
+  }
+
+  OcrMrzResult fixLines() {
+    String line1 = "${documentCode.padRight(2,"<")}${issuingState.padRight(3,"<")}${"${lastName}<<${firstName}"}".padRight(44, "<");
+    String line2 = "${documentNumber.padRight(9,"<")}${numberCheck??"<"}${nationality}${birthStr??"<<<<<<"}${bDataCheck??"<"}${sex.padRight(1,"<")}${expStr??"<<<<<<"}${eDataCheck??"<"}".padRight(44, "<");
+
+    var fixed = this;
+    fixed.line1 = line1;
+    fixed.line2 = line2;
+    return this;
   }
 }
 

@@ -28,12 +28,11 @@ packages:
   camera_kit_plus:
     dependency: transitive
     description:
-      path: "."
-      ref: HEAD
-      resolved-ref: fc98afac1d26f2043f2937104aacb113497b4000
-      url: "https://github.com/AmirAshvins/camera_kit_plus.git"
-    source: git
-    version: "0.0.44"
+      name: camera_kit_plus
+      sha256: "9db6e23cb1258f777b8d910c4a7b88f4134fda5cbf35748bbd88c10e8c760d16"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.48"
   characters:
     dependency: transitive
     description:
@@ -207,7 +206,7 @@ packages:
       path: ".."
       relative: true
     source: path
-    version: "0.0.88"
+    version: "0.0.97"
   path:
     dependency: transitive
     description:

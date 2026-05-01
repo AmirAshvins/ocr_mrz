@@ -37,10 +37,13 @@ class OcrMrzController extends CameraKitPlusController {
   final OcrMrzAggregator aggregator = OcrMrzAggregator();
   late final SessionLogger logger;
   late DateTime _sessionStartTime;
-  
+
   late final ValueNotifier<OcrMrzApiConfig?> _apiConfigNotifier;
+
   OcrMrzApiConfig? get apiConfig => _apiConfigNotifier.value;
+
   set apiConfig(OcrMrzApiConfig? newConfig) => _apiConfigNotifier.value = newConfig;
+
   ValueNotifier<OcrMrzApiConfig?> get apiConfigNotifier => _apiConfigNotifier;
 
   OcrMrzController({SessionLogger? sessionLogger, OcrMrzApiConfig? apiConfig}) {
@@ -138,9 +141,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
   @override
   void initState() {
     super.initState();
-    _sessionOcrHandler = SessionOcrHandlerConsensus(
-      logger: widget.controller.logger,
-    );
+    _sessionOcrHandler = SessionOcrHandlerConsensus(logger: widget.controller.logger);
 
     widget.controller.apiConfigNotifier.addListener(_onApiConfigChanged);
     if (widget.isActive) {
@@ -157,7 +158,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
       });
     });
   }
-  
+
   void _onApiConfigChanged() {
     if (widget.isActive) {
       _startApiTimer();
@@ -178,12 +179,12 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
     _apiTimer = null;
   }
 
-  Future<void> _makeApiCall([bool asLog= false]) async {
+  Future<void> _makeApiCall([bool asLog = false]) async {
     final apiConfig = widget.controller.apiConfig;
     if (!widget.isActive || _ocrDataBuffer.isEmpty || apiConfig == null) {
       return;
     }
-    
+
     final List<OcrData> ocrDataToSend = List.of(_ocrDataBuffer);
     _ocrDataBuffer.clear();
 
@@ -207,30 +208,25 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
             if (apiConfig.photoMaxWidth != null && image.width > apiConfig.photoMaxWidth!) {
               resizedImage = img.copyResize(image, width: apiConfig.photoMaxWidth);
             }
-            
+
             imageBytes = img.encodeJpg(resizedImage, quality: apiConfig.photoQuality);
           }
 
-          request.files.add(http.MultipartFile.fromBytes(
-            'attachFiles',
-            imageBytes,
-            filename: 'mrz_scan.jpg',
-          ));
+          request.files.add(http.MultipartFile.fromBytes('attachFiles', imageBytes, filename: 'mrz_scan.jpg'));
         }
-      }else{
+      } else {
         log("_makeApiCall without photo");
       }
 
-
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
-      if(asLog){
+      if (asLog) {
         return;
       }
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);
         ApiResponse res = ApiResponse.fromJson(jsonResponse);
-        if(res.success){
+        if (res.success) {
           log("we got response from online parser ");
           final OcrMrzResult result = res.toOcrMrzResult();
           result.scanDuration = DateTime.now().difference(widget.controller._sessionStartTime);

@@ -23,7 +23,7 @@ class ApiResponse {
       mrzFormat: '',
       countryCode: '${response?.issueCountry.value??''}',
       issuingState: '${response?.issueCountry.value??''}',
-      lastName: '${response?.lastName.value??''}',
+      lastName: '${response?.lastName.value??response?.fullname.value??''}',
       firstName: '${response?.firstName.value??''}',
       documentNumber: '${response?.documentNumber.value??''}',
       nationality: '${response?.nationality.value??''}',
@@ -35,18 +35,24 @@ class ApiResponse {
       valid: OcrMrzValidation(),
       checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
       ocrData: OcrData(text: "", lines: []),
+      bDataCheck: response?.birthDate.checkDigit,
+      eDataCheck: response?.expiryDate.checkDigit,
+      numberCheck: response?.documentNumber.checkDigit,
+      birthStr: response?.birthDate.value,
+      expStr: response?.expiryDate.value
     );
   }
 }
 
 class ConfidenceField {
   final String? value;
+  final String? checkDigit;
   final int percent;
 
-  const ConfidenceField({this.value, required this.percent});
+  const ConfidenceField({this.value, required this.percent,this.checkDigit});
 
   factory ConfidenceField.fromJson(Map<String, dynamic> json) {
-    return ConfidenceField(value: json['value']?.toString(), percent: json['percent'] ?? 0);
+    return ConfidenceField(value: json['value']?.toString(), percent: json['percent'] ?? 0,checkDigit: json["checkDigit"]);
   }
 }
 
@@ -63,6 +69,7 @@ class DocumentScanResponse {
   final ConfidenceField gender;
   final ConfidenceField nationality;
   final ConfidenceField issueCountry;
+  final ConfidenceField fullname;
 
   const DocumentScanResponse({
     required this.id,
@@ -76,6 +83,7 @@ class DocumentScanResponse {
     required this.gender,
     required this.nationality,
     required this.issueCountry,
+    required this.fullname,
   });
 
   factory DocumentScanResponse.fromJson(Map<String, dynamic> json) {
@@ -95,6 +103,7 @@ class DocumentScanResponse {
       gender: parse('gender'),
       nationality: parse('nationality'),
       issueCountry: parse('issueCountry'),
+      fullname: parse('name'),
     );
   }
 }
