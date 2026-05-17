@@ -257,9 +257,11 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.isActive != widget.isActive) {
       if (widget.isActive) {
+        widget.controller.resumeCamera();
         _startApiTimer();
       } else {
         _stopApiTimer();
+        widget.controller.pauseCamera();
       }
     }
 
@@ -276,12 +278,16 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
   @override
   void dispose() {
     _stopApiTimer();
+    widget.controller.pauseCamera();
     widget.controller.apiConfigNotifier.removeListener(_onApiConfigChanged);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isActive) {
+      return const SizedBox.shrink();
+    }
     return CameraKitOcrPlusView(
       showFrame: widget.showFrame,
       showZoomSlider: widget.showZoom,

@@ -31,11 +31,29 @@ class OcrMrzReaderNew extends StatefulWidget {
 }
 
 class _OcrMrzReaderNewState extends State<OcrMrzReaderNew> {
-  // The state is now simple and holds no parser instance.
-  // The controller is the single source of truth.
+  @override
+  void didUpdateWidget(covariant OcrMrzReaderNew oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive != widget.isActive) {
+      if (widget.isActive) {
+        widget.controller.resumeCamera();
+      } else {
+        widget.controller.pauseCamera();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.pauseCamera();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.isActive) {
+      return const SizedBox.shrink();
+    }
     return CameraKitOcrPlusView(
       showFrame: widget.showFrame,
       showZoomSlider: widget.showZoom,
