@@ -1,6 +1,8 @@
 import 'package:camera_kit_plus/camera_kit_plus.dart';
 import 'package:ocr_mrz/my_ocr_handler.dart' hide DocumentStandardType;
+import 'package:ocr_mrz/mrz_string_util.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
+import 'package:ocr_mrz/viz_name_util.dart';
 import 'package:ocr_mrz/session_status_class.dart';
 
 import 'mrz_result_class_fix.dart';
@@ -121,6 +123,8 @@ class OcrMrzConsensus {
   final FieldStat<String> docTypeStat;
   final FieldStat<String> birthDateStat; // key is yyyy-MM-dd
   final FieldStat<String> expiryDateStat; // key is yyyy-MM-dd
+  final VizNameAgreement nameVizAgreement;
+  final bool needsManualNameVerification;
 
   OcrMrzConsensus({
     required this.countryCode,
@@ -156,6 +160,8 @@ class OcrMrzConsensus {
     required this.docTypeStat,
     required this.docType,
     this.mrzLines = const [],
+    this.nameVizAgreement = VizNameAgreement.skipped,
+    this.needsManualNameVerification = false,
   });
 
   OcrMrzValidation get valid => toResult().valid;
@@ -196,8 +202,9 @@ class OcrMrzConsensus {
       // fresh; you could pass something smarter here
       checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
       ocrData: OcrData(text: '', lines: []),
-      // assuming you have an empty() factory/placeholder
       format: format,
+      nameVizAgreement: nameVizAgreement,
+      needsManualNameVerification: needsManualNameVerification,
     );
   }
 
@@ -254,6 +261,16 @@ class OcrMrzConsensus {
       "docType": fieldToJson(docTypeStat),
     };
   }
+
+  /// How settled the scanned name fields are across recent frames.
+  MrzNameConfidence get nameConfidence => mrzNameConfidenceFromCounts(
+        firstNameConsensusCount: firstNameStat.consensusCount,
+        firstNameHistogram: firstNameStat.histogram,
+        lastNameConsensusCount: lastNameStat.consensusCount,
+        lastNameHistogram: lastNameStat.histogram,
+      );
+
+  bool get isNameStillStabilizing => nameConfidence == MrzNameConfidence.low;
 }
 
 /// ---------- Aggregator ----------
@@ -261,6 +278,8 @@ class OcrMrzConsensus {
 class OcrMrzAggregator {
   // Counters (normalize for robust grouping)
   OcrMrzValidation validation = OcrMrzValidation();
+  VizNameAgreement nameVizAgreement = VizNameAgreement.skipped;
+  bool needsManualNameVerification = false;
   final _country = MajorityCounter<String>(normalize: _normCode);
   final _docCode = MajorityCounter<String>(normalize: _normCode);
   final _issuing = MajorityCounter<String>(normalize: _normCode);
@@ -318,7 +337,7 @@ class OcrMrzAggregator {
 
     // Gate by both OcrMrzValidation.docNumberValid and checkDigits.document when present.
     if (r.documentNumber.isNotEmpty) {
-      _docNo.add(r.documentNumber);
+      _docNo.add(stripMrzDocNumber(r.documentNumber));
     }
 
     // Names (gate by nameValid)
@@ -402,7 +421,8 @@ class OcrMrzAggregator {
   }
 
   void addDocNum(String num) {
-    _docNo.add(num);
+    final cleaned = stripMrzDocNumber(num);
+    if (cleaned.isNotEmpty) _docNo.add(cleaned);
   }
 
   void addFirstName(String name) {
@@ -411,6 +431,11 @@ class OcrMrzAggregator {
 
   void addLastName(String name) {
     _lname.add(name);
+  }
+
+  void setNameVizMeta({required VizNameAgreement agreement, required bool needsManual}) {
+    nameVizAgreement = agreement;
+    needsManualNameVerification = needsManual;
   }
 
   void addBirthCheck(String check) {
@@ -513,6 +538,8 @@ class OcrMrzAggregator {
       docTypeStat: FieldStat(consensus: docType, consensusCount: _pickCnt(_docType), histogram: _docType.snapshot()),
 
       mrzLines: buildMrz(hideName: maskName),
+      nameVizAgreement: nameVizAgreement,
+      needsManualNameVerification: needsManualNameVerification,
     );
     // log(built.documentNumber??'-');
     return built;

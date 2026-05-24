@@ -1,7 +1,7 @@
 
 name: ocr_mrz
 description: "A new Flutter package uses ocr to get mrz"
-version: 0.0.100
+version: 0.0.101
 
 publish_to: "none"
 

@@ -1,3 +1,6 @@
+export 'aggregator.dart';
+export 'mrz_string_util.dart';
+export 'viz_name_util.dart';
 export 'constant_data_class.dart';
 export 'document_class.dart';
 export 'mrz_result_class.dart';

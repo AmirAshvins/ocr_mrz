@@ -1,6 +1,7 @@
 import 'package:ocr_mrz/document_class.dart';
 import 'package:ocr_mrz/name_validation_data_class.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
+import 'package:ocr_mrz/viz_name_util.dart';
 
 import 'detect name.dart';
 import 'my_ocr_handler.dart';
@@ -20,16 +21,40 @@ class MrzName {
   final String surname; // pretty (spaces, trimmed)
   final List<String> givenNames; // pretty
   final String full; // "ERIKSSON ANNA MARIA"
+  final VizNameAgreement vizAgreement;
+  final bool needsManualNameVerification;
 
-  MrzName({required this.rawSurname, required this.rawGivenNames, required this.surname, required this.givenNames, required this.full});
+  MrzName({
+    required this.rawSurname,
+    required this.rawGivenNames,
+    required this.surname,
+    required this.givenNames,
+    required this.full,
+    this.vizAgreement = VizNameAgreement.skipped,
+    this.needsManualNameVerification = false,
+  });
 
   String get firstName => givenNames.join(" ");
 
   String get lastName => surname;
 
+  MrzName applyVizLookup(VizNameLookupResult viz) {
+    final given = viz.givenNames.isNotEmpty ? viz.givenNames : givenNames;
+    final fullPretty = [if (viz.surname.isNotEmpty) viz.surname, if (given.isNotEmpty) given.join(' ')].join(' ').trim();
+    return MrzName(
+      rawSurname: rawSurname,
+      rawGivenNames: rawGivenNames,
+      surname: viz.surname,
+      givenNames: given,
+      full: fullPretty,
+      vizAgreement: viz.agreement,
+      needsManualNameVerification: viz.needsManualNameVerification,
+    );
+  }
+
   (bool, String, MrzName) validateNames(Iterable<String> lines, OcrMrzSetting setting, List<NameValidationData> names) {
     if (setting.nameValidationMode == NameValidationMode.none) {
-      return (true, 'none', this);
+      return _withVizLookup(lines, 'none');
     } else if (setting.nameValidationMode == NameValidationMode.exact) {
       if (names.isNotEmpty) {
         final nameValidation = names.firstWhereOrNull((a) => noKcomparison(a, firstname: firstName, lastname: lastName));
@@ -55,10 +80,8 @@ class MrzName {
 
       final res = isLastNameValid && isFirstNameValid;
       if (res) {
-        return (true, 'ocr_lines', this);
+        return _withVizLookup(lines, 'ocr_lines');
       }
-
-      // final nameValidation = name.any((a)=>"${a.firstName} ${a.lastName} ${a.middleName??''}".toUpperCase().split(" ").contains(firstName.toUpperCase()) || "${a.firstName} ${a.lastName} ${a.middleName??''}".toUpperCase().split(" ").contains(lastName.toUpperCase()));
 
       return (false, 'failed', this);
     } else {
@@ -70,7 +93,7 @@ class MrzName {
       final isLastNameValid = lastName.trim().isEmpty || lastName.toLowerCase().split(" ").every((a) => words.any((b) => b.contains(a.toLowerCase())));
       final res = isLastNameValid && isFirstNameValid;
       if (res) {
-        return (true, 'ocr_lines', this);
+        return _withVizLookup(lines, 'ocr_lines');
       }
 
       final nameValidation = names.any(
@@ -99,6 +122,13 @@ class MrzName {
 
       return (false, 'failed', this);
     }
+  }
+
+  (bool, String, MrzName) _withVizLookup(Iterable<String> lines, String sourcePrefix) {
+    final viz = applyVizNameLookup(surname: surname, givenNames: givenNames, ocrLines: lines);
+    final updated = applyVizLookup(viz);
+  final source = viz.agreement == VizNameAgreement.strong ? '${sourcePrefix}_viz_strong' : '${sourcePrefix}_viz_weak';
+    return (true, source, updated);
   }
 }
 

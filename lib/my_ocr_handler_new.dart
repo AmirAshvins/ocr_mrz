@@ -4,6 +4,7 @@ import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
 import 'package:ocr_mrz/mrz_result_class_fix.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
+import 'package:ocr_mrz/viz_name_util.dart';
 
 import 'my_name_handler.dart';
 import 'ocr_mrz_settings_class.dart';
@@ -203,6 +204,8 @@ class MyOcrHandlerNew {
     String? sex;
     String? optional;
     MrzName? name;
+    VizNameAgreement nameVizAgreement = VizNameAgreement.skipped;
+    bool needsManualNameVerification = false;
 
     String finalCheckValue = "";
 
@@ -516,9 +519,12 @@ class MyOcrHandlerNew {
               }
 
               if (name != null) {
+                var (a, _, fixed) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
+                name = fixed;
                 firstName = name.givenNames.join(" ");
                 lastName = name.surname;
-                var (a, _, __) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
+                nameVizAgreement = name.vizAgreement;
+                needsManualNameVerification = name.needsManualNameVerification;
                 validation.nameValid = a;
               }
 
@@ -553,6 +559,8 @@ class MyOcrHandlerNew {
       valid: validation,
       checkDigits: CheckDigits(document: true, birth: true, expiry: true, optional: true),
       ocrData: ocr,
+      nameVizAgreement: nameVizAgreement,
+      needsManualNameVerification: needsManualNameVerification,
     );
     if (rawMrzLines.isNotEmpty) {
       log("\n${rawMrzLines.join("\n")}");

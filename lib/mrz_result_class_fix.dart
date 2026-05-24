@@ -1,6 +1,7 @@
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/constant_data_class.dart';
 import 'package:ocr_mrz/document_class.dart';
+import 'package:ocr_mrz/viz_name_util.dart';
 
 enum MrzFormat { TD3, MRV_A, MRV_B, TD1, TD2, unknown }
 
@@ -68,6 +69,12 @@ class OcrMrzResult {
   OcrData ocrData;
   String format;
 
+  /// VIZ vs MRZ name agreement from the latest validated name lookup.
+  VizNameAgreement nameVizAgreement;
+
+  /// When true, the agent should verify the name against the physical document.
+  bool needsManualNameVerification;
+
   /// The duration from the start of the session until the result was found.
   /// This is a runtime value and not part of the JSON serialization.
   Duration? scanDuration;
@@ -128,6 +135,8 @@ class OcrMrzResult {
     this.numberCheck,
     this.birthStr,
     this.expStr,
+    this.nameVizAgreement = VizNameAgreement.skipped,
+    this.needsManualNameVerification = false,
   });
 
   /// Robust factory that accepts both the old (passport-only) JSON and the new visa-aware JSON.

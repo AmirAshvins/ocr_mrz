@@ -5,6 +5,7 @@ import 'package:ocr_mrz/my_name_handler.dart';
 import 'package:ocr_mrz/name_validation_data_class.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/session_logger.dart';
+import 'package:ocr_mrz/mrz_string_util.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
 final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
@@ -208,7 +209,63 @@ class SessionOcrHandlerConsensus {
         }
         String? numberStr;
         if (updatedSession.type == "td1") {
-          // TD1 logic
+          final dateStart = updatedSession.birthDate;
+          if (dateStart != null) {
+            for (var l in lines) {
+              final index = lines.indexOf(l);
+              if (index <= 0) continue;
+              if (!normalize(l).startsWith(dateStart)) continue;
+
+              final firstLineGuess = normalize(lines[index - 1]);
+              if (firstLineGuess.length < 15) continue;
+
+              final docCode = firstLineGuess.substring(0, 2);
+              final countryCode = firstLineGuess.substring(2, 5);
+              final validCode = DocumentCodeHelper.isValid(docCode);
+              final validCountry = isValidMrzCountry(countryCode);
+              if (!validCode || !validCountry) continue;
+
+              final rawDocNum = firstLineGuess.substring(5, 14);
+              numberStr = stripMrzDocNumber(rawDocNum);
+              final numberStrCheck = firstLineGuess[14];
+              final docNumberValid = _computeMrzCheckDigit(rawDocNum) == numberStrCheck;
+
+              if ((updatedSession.step ?? 0) < 4) {
+                logger.log(
+                  message: "TD1 document number found => $numberStr",
+                  step: updatedSession.step,
+                  details: {
+                    'doc_number': numberStr,
+                    'raw_doc_number': rawDocNum,
+                    'checkDigit': numberStrCheck,
+                    'valid': docNumberValid,
+                    'line': firstLineGuess,
+                    'ocr_text': rawOcrTextMultiLine,
+                    'consensus': consensus.toJson(includeHistograms: true),
+                  },
+                );
+              }
+
+              var currentVal = aggregator.validation;
+              currentVal.docNumberValid = docNumberValid;
+              currentVal.countryValid = validCountry;
+              currentVal.docCodeValid = validCode;
+              currentVal.linesLengthValid = true;
+              aggregator.validation = currentVal;
+              aggregator.addDocCode(docCode);
+              aggregator.addCountry(countryCode);
+
+              if (docNumberValid && numberStr.isNotEmpty) {
+                aggregator.addDocNum(numberStr);
+                aggregator.addNumCheck(numberStrCheck);
+                if ((updatedSession.step ?? 0) < 4) {
+                  aggregator.setStep(4);
+                  logger.log(message: "Step updated to 4. TD1 document number confirmed.", step: 4, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
+                }
+              }
+              break;
+            }
+          }
         } else {
           final natOnly = "${updatedSession.nationality}";
           final numberBeforeNatReg = RegExp(r'([A-Z0-9<]{9,12})(\d)(?=' + RegExp.escape(natOnly) + r')');
@@ -305,7 +362,47 @@ class SessionOcrHandlerConsensus {
           );
         }
         if (updatedSession.type == "td1") {
-          // TD1 name logic
+          final birthDate = updatedSession.birthDate;
+          if (birthDate != null) {
+            final line2Index = lines.indexWhere((a) => normalize(a).startsWith(birthDate));
+            if (line2Index != -1 && lines.length > line2Index + 1) {
+              final line3 = fixAlphaOnlyField(normalize(lines[line2Index + 1]));
+              if (line3.contains('<<')) {
+                var name = parseNamesTd1(line3);
+                if ((updatedSession.step ?? 0) < 5) {
+                  logger.log(
+                    message: "TD1 parsed names",
+                    step: updatedSession.step,
+                    details: {'surname': name.surname, 'givenNames': name.givenNames.join(' '), 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+                  );
+                }
+                final otherLines = [...lines.where((a) => a != lines[line2Index + 1])];
+                var currentVal = aggregator.validation;
+                final (isValid, validationSource, fixed) = name.validateNames(otherLines, setting, names);
+                name = fixed;
+                currentVal.nameValid = isValid;
+                aggregator.validation = currentVal;
+
+                if (isValid) {
+                  logger.log(
+                    message: "TD1 name validation passed ($validationSource): ${name.full}",
+                    step: updatedSession.step,
+                    details: {'source': validationSource, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+                  );
+                }
+
+                if (currentVal.nameValid) {
+                  aggregator.addFirstName(name.givenNames.join(' '));
+                  aggregator.addLastName(name.surname);
+                  aggregator.setNameVizMeta(agreement: name.vizAgreement, needsManual: name.needsManualNameVerification);
+                  if ((updatedSession.step ?? 0) < 5) {
+                    aggregator.setStep(5);
+                    logger.log(message: "Step updated to 5. TD1 name confirmed.", step: 5, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
+                  }
+                }
+              }
+            }
+          }
         } else {
           String line1Start = updatedSession.docCode! + updatedSession.countryCode!;
           for (var l in lines) {
@@ -366,6 +463,7 @@ class SessionOcrHandlerConsensus {
               if (currentVal.nameValid) {
                 aggregator.addFirstName(name.givenNames.join(" "));
                 aggregator.addLastName(name.surname);
+                aggregator.setNameVizMeta(agreement: name.vizAgreement, needsManual: name.needsManualNameVerification);
                 if ((updatedSession.step ?? 0) < 5) {
                   aggregator.setStep(5);
                   logger.log(message: "Step updated to 5. Name confirmed.", step: 5, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});

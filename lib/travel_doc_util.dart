@@ -7,6 +7,7 @@ import 'package:ocr_mrz/passport_util.dart';
 
 import 'country_validator.dart';
 import 'mrz_result_class_fix.dart';
+import 'mrz_string_util.dart';
 import 'ocr_mrz_settings_class.dart';
 import 'orc_mrz_log_class.dart';
 
@@ -373,8 +374,8 @@ Map<String, dynamic>? _parseTd1({
       'countryCode': issuingState,
       'lastName': lastName,
       'firstName': firstName,
-      'documentNumber': docNo,
-      'passportNumber': docNo, // legacy mirror
+      'documentNumber': stripMrzDocNumber(docNo),
+      'passportNumber': stripMrzDocNumber(docNo), // legacy mirror
       'nationality': nationality,
       'birthDate': _parseDateYYMMDD(birth)?.toIso8601String(),
       'expiryDate': _parseDateYYMMDD(expiry)?.toIso8601String(),
