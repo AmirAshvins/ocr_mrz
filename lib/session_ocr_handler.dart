@@ -326,7 +326,7 @@ class SessionOcrHandler {
           if (lines.length > 2) {
             String line3 = lines[2];
             MrzName? name = parseNamesTd1(line3);
-            String firstName = name.givenNames.join(" ");
+            String firstName = name.firstName;
             String lastName = name.surname;
             List<String> otherLines = [...lines.where((a) => a != line3).map((a) => normalize(a))];
             var currentVal = updatedSession.validation ?? OcrMrzValidation();
@@ -348,7 +348,7 @@ class SessionOcrHandler {
           for (var l in lines) {
             if (l.startsWith(line1Start)) {
               MrzName? name = parseNamesTd3OrTd2(l);
-              String firstName = name.givenNames.join(" ");
+              String firstName = name.firstName;
               String lastName = name.surname;
               List<String> otherLines = [...lines.where((a) => a != l).map((a) => normalize(a))];
               var currentVal = updatedSession.validation ?? OcrMrzValidation();

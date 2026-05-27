@@ -125,6 +125,7 @@ class OcrMrzConsensus {
   final FieldStat<String> expiryDateStat; // key is yyyy-MM-dd
   final VizNameAgreement nameVizAgreement;
   final bool needsManualNameVerification;
+  final OcrMrzValidation sessionValidation;
 
   OcrMrzConsensus({
     required this.countryCode,
@@ -162,9 +163,10 @@ class OcrMrzConsensus {
     this.mrzLines = const [],
     this.nameVizAgreement = VizNameAgreement.skipped,
     this.needsManualNameVerification = false,
-  });
+    OcrMrzValidation? sessionValidation,
+  }) : sessionValidation = sessionValidation ?? OcrMrzValidation();
 
-  OcrMrzValidation get valid => toResult().valid;
+  OcrMrzValidation get valid => sessionValidation;
 
   OcrMrzResult toResult({String format = "td3", String mrzFormat = "td3"}) {
     return OcrMrzResult(
@@ -185,20 +187,7 @@ class OcrMrzConsensus {
       sex: sex ?? '',
       personalNumber: personalNumber ?? '',
       optionalData: optionalData ?? '',
-      valid: OcrMrzValidation(
-        docNumberValid: documentNumber != null,
-        docCodeValid: docCode != null,
-        countryValid: countryCode != null,
-        birthDateValid: birthDate != null,
-        nameValid: firstName != null,
-        personalNumberValid: personalNumber != null,
-        linesLengthValid: line1 != null,
-        expiryDateValid: expiryDate != null,
-        nationalityValid: nationality != null,
-        finalCheckValid:
-            docType != "P" ||
-            (documentNumber != null && countryCode != null && birthDate != null && firstName != null && personalNumber != null && line1 != null && expiryDate != null && nationality != null),
-      ),
+      valid: sessionValidation,
       // fresh; you could pass something smarter here
       checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
       ocrData: OcrData(text: '', lines: []),
@@ -469,6 +458,9 @@ class OcrMrzAggregator {
     _ocrLinesHistory.add(lines);
   }
 
+  /// All OCR lines seen across all frames (flattened, deduplicated).
+  List<String> get allOcrLines => _ocrLinesHistory.expand((f) => f).toSet().toList();
+
   bool sessionScannedData(String data) {
     return _ocrLinesHistory.any((a) => a.join("\n").contains(data));
   }
@@ -502,8 +494,9 @@ class OcrMrzAggregator {
     // log("${FieldStat(consensus: docNumWithCheck, consensusCount: _pickCnt(_numWithCheck), histogram: _numWithCheck.snapshot()).histogram}");
 
     final mostDocCode = mostCommonFirst2Prefixes(_ocrLinesHistory, country ?? nat ?? issuing ?? '   ');
+    final resolvedCountry = country ?? nat;
     final built = OcrMrzConsensus(
-      countryCode: country == null ? null : fixAlphaOnlyField(country),
+      countryCode: resolvedCountry == null ? null : fixAlphaOnlyField(resolvedCountry),
       issuingState: (issuing ?? country) == null ? null : fixAlphaOnlyField((issuing ?? country)!),
       docCode: mostDocCode,
       // fallback
@@ -540,6 +533,7 @@ class OcrMrzAggregator {
       mrzLines: buildMrz(hideName: maskName),
       nameVizAgreement: nameVizAgreement,
       needsManualNameVerification: needsManualNameVerification,
+      sessionValidation: validation,
     );
     // log(built.documentNumber??'-');
     return built;
@@ -765,7 +759,7 @@ class OcrMrzAggregator {
     bool optCountValid = !setting.validatePersonalNumberValid || _pickCnt(_opt) >= countValidation.personalNumberValidCount;
     bool fNameCountValid = !setting.validateNames || _pickCnt(_fname) >= countValidation.nameValidCount;
     bool lNameCountValid = !setting.validateNames || _pickCnt(_lname) >= countValidation.nameValidCount;
-    bool docNumCountValid = !setting.validateDocNumberValid || _pickCnt(_docCode) >= countValidation.docNumberValidCount;
+    bool docNumCountValid = !setting.validateDocNumberValid || _pickCnt(_docNo) >= countValidation.docNumberValidCount;
 
     return (countryCountValid && natCountValid && birthCountValid && expiryCountValid && sexCountValid && docCodeCountValid && optCountValid && fNameCountValid && lNameCountValid && docNumCountValid);
   }

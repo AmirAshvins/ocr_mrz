@@ -400,7 +400,7 @@ class MyOcrHandler {
       }
 
       if (name != null) {
-        firstName = name.givenNames.join(" ");
+        firstName = name.firstName;
         lastName = name.surname;
         validation.nameValid = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []).$1;
       }

@@ -190,8 +190,8 @@ class OcrMrzSetting {
 
 extension MrzValidationExt on OcrMrzResult {
   bool matchSetting(OcrMrzSetting setting) {
-    // log(
-    //   '''
+    // if (kDebugMode) {
+    //   print('''
     //   ${valid.expiryDateValid} == ${setting.validateExpiryDateValid}
     //   ${valid.finalCheckValid} == ${setting.validateFinalCheckValid}
     //   ${valid.linesLengthValid} == ${setting.validateLinesLength}
@@ -201,8 +201,8 @@ extension MrzValidationExt on OcrMrzResult {
     //   ${valid.birthDateValid} == ${setting.validateBirthDateValid}
     //   ${valid.countryValid} == ${setting.validateCountry}
     //   ${valid.docNumberValid} == ${setting.validateDocNumberValid}
-    //   '''
-    // );
+    //   ''');
+    // }
 
     return (valid.expiryDateValid || !setting.validateExpiryDateValid) &&
         (valid.finalCheckValid || !setting.validateFinalCheckValid) &&

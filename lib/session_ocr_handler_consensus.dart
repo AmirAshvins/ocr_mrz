@@ -1,11 +1,11 @@
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/aggregator.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
+import 'package:ocr_mrz/mrz_string_util.dart';
 import 'package:ocr_mrz/my_name_handler.dart';
 import 'package:ocr_mrz/name_validation_data_class.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/session_logger.dart';
-import 'package:ocr_mrz/mrz_string_util.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
 final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
@@ -69,7 +69,8 @@ class SessionOcrHandlerConsensus {
         aggregator.validation = currentVal;
 
         if (birthDateValid && expDateValid) {
-          if (aggregator.buildStatus().birthDate != birthDateStr) {
+          final priorBirth = aggregator.buildStatus().birthDate;
+          if (priorBirth != null && priorBirth.isNotEmpty && priorBirth != birthDateStr) {
             logger.log(
               message: "New birth date detected. Resetting session.",
               step: updatedSession.step,
@@ -99,18 +100,18 @@ class SessionOcrHandlerConsensus {
 
       updatedSession = aggregator.buildStatus();
 
-      if (_dateSexRe.hasMatch(ocr.text)) {
+      if (secondLineGuess.isNotEmpty) {
         final dateSexMatchCheck = _dateSexRe.firstMatch(secondLineGuess);
-        if (dateSexMatchCheck != null) {
-          String dateSexCheckStr = dateSexMatchCheck.group(0)!;
-          if (updatedSession.dateSexStr != dateSexCheckStr) {
-            logger.log(
-              message: "New document detected based on date/sex string change. Resetting session.",
-              step: updatedSession.step,
-              details: {'new_date_sex': dateSexCheckStr, 'old_date_sex': updatedSession.dateSexStr, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
-            );
-            aggregator.reset();
-          }
+        final frameBirth = dateSexMatchCheck?.group(1);
+        final sessionBirth = updatedSession.birthDate;
+        if (frameBirth != null && sessionBirth != null && sessionBirth.isNotEmpty && frameBirth != sessionBirth) {
+          logger.log(
+            message: "New document detected based on birth date change. Resetting session.",
+            step: updatedSession.step,
+            details: {'new_birth_date': frameBirth, 'old_birth_date': sessionBirth, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+          );
+          aggregator.reset();
+          updatedSession = aggregator.buildStatus();
         }
       }
 
@@ -136,7 +137,7 @@ class SessionOcrHandlerConsensus {
           l = normalize(l);
           final countryBeforeBirthMatch = countryBeforeBirthReg.firstMatch(l);
           if (countryBeforeBirthMatch != null) {
-            type = l.length < 40 ? "td2" : "td2";
+            type = l.length < 40 ? "td2" : "td3";
             nationalityStr = countryBeforeBirthMatch.group(0)!;
             if (index != 0) line1 = lines[index - 1];
           } else if (l.contains(birth)) {
@@ -173,6 +174,10 @@ class SessionOcrHandlerConsensus {
               var currentVal = aggregator.validation;
               currentVal.nationalityValid = true;
               aggregator.addNationality(nationalityStr);
+              if (type == 'td1') {
+                aggregator.addCountry(fixedNationalityStr);
+                currentVal.countryValid = true;
+              }
               aggregator.validation = currentVal;
               aggregator.setType(type);
               if ((updatedSession.step ?? 0) < 3) {
@@ -255,7 +260,7 @@ class SessionOcrHandlerConsensus {
               aggregator.addDocCode(docCode);
               aggregator.addCountry(countryCode);
 
-              if (docNumberValid && numberStr.isNotEmpty) {
+              if (numberStr.isNotEmpty) {
                 aggregator.addDocNum(numberStr);
                 aggregator.addNumCheck(numberStrCheck);
                 if ((updatedSession.step ?? 0) < 4) {
@@ -297,12 +302,12 @@ class SessionOcrHandlerConsensus {
               var currentVal = aggregator.validation;
               currentVal.docNumberValid = docNumberValid;
 
-              String firstLineGuess = lines[index - 1];
-              if (firstLineGuess.length > 5) {
-                String docCode = firstLineGuess.substring(0, 2);
-                String countryCode = firstLineGuess.substring(2, 5);
-                bool validCode = DocumentCodeHelper.isValid(docCode);
-                bool validCountry = isValidMrzCountry(countryCode);
+              final header = _resolveMrzHeader(lines: lines, lineAboveDoc: lines[index - 1], nationality: natOnly);
+              if (header != null) {
+                final docCode = header.docCode;
+                final countryCode = header.countryCode;
+                final validCode = header.docCodeValid;
+                final validCountry = header.countryValid;
                 if ((updatedSession.step ?? 0) < 4) {
                   logger.log(
                     message: "Header validation",
@@ -312,6 +317,7 @@ class SessionOcrHandlerConsensus {
                       'docCodeValid': validCode,
                       'country': countryCode,
                       'countryValid': validCountry,
+                      'headerSource': header.source,
                       'ocr_text': rawOcrTextMultiLine,
                       'consensus': consensus.toJson(includeHistograms: true),
                     },
@@ -364,9 +370,9 @@ class SessionOcrHandlerConsensus {
         if (updatedSession.type == "td1") {
           final birthDate = updatedSession.birthDate;
           if (birthDate != null) {
-            final line2Index = lines.indexWhere((a) => normalize(a).startsWith(birthDate));
-            if (line2Index != -1 && lines.length > line2Index + 1) {
-              final line3 = fixAlphaOnlyField(normalize(lines[line2Index + 1]));
+            final nameLineRaw = _findTd1NameLine(lines, birthDate);
+            if (nameLineRaw != null) {
+              final line3 = fixAlphaOnlyField(normalize(nameLineRaw));
               if (line3.contains('<<')) {
                 var name = parseNamesTd1(line3);
                 if ((updatedSession.step ?? 0) < 5) {
@@ -376,10 +382,14 @@ class SessionOcrHandlerConsensus {
                     details: {'surname': name.surname, 'givenNames': name.givenNames.join(' '), 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
                   );
                 }
-                final otherLines = [...lines.where((a) => a != lines[line2Index + 1])];
+                final otherLines = [...lines.where((a) => a != nameLineRaw), ...aggregator.allOcrLines];
                 var currentVal = aggregator.validation;
-                final (isValid, validationSource, fixed) = name.validateNames(otherLines, setting, names);
+                var (isValid, validationSource, fixed) = name.validateNames(otherLines, setting, names);
                 name = fixed;
+                if (!isValid && !setting.validateNames) {
+                  isValid = true;
+                  validationSource = 'mrz_only';
+                }
                 currentVal.nameValid = isValid;
                 aggregator.validation = currentVal;
 
@@ -392,7 +402,7 @@ class SessionOcrHandlerConsensus {
                 }
 
                 if (currentVal.nameValid) {
-                  aggregator.addFirstName(name.givenNames.join(' '));
+                  aggregator.addFirstName(name.firstName);
                   aggregator.addLastName(name.surname);
                   aggregator.setNameVizMeta(agreement: name.vizAgreement, needsManual: name.needsManualNameVerification);
                   if ((updatedSession.step ?? 0) < 5) {
@@ -404,69 +414,75 @@ class SessionOcrHandlerConsensus {
             }
           }
         } else {
-          String line1Start = updatedSession.docCode! + updatedSession.countryCode!;
-          for (var l in lines) {
-            if (l.startsWith(line1Start)) {
-              MrzName name = parseNamesTd3OrTd2(l);
-              if ((updatedSession.step ?? 0) < 5) {
-                logger.log(
-                  message: "Parsed Names",
-                  step: updatedSession.step,
-                  details: {'surname': name.surname, 'givenNames': name.givenNames.join(' '), 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
-                );
-              }
-              List<String> otherLines = [...lines.where((a) => a != l)];
-              var currentVal = aggregator.validation;
-              final (isValid, validationSource, fixed) = name.validateNames(otherLines, setting, names);
-              if (isValid) {
-                logger.log(
-                  message: "FIXED VALID NAME: ${fixed.full} source ${validationSource}",
-                  step: updatedSession.step,
-                  details: {
-                    'source': validationSource,
-                    'parsed_surname': name.surname,
-                    'parsed_given_names': name.givenNames,
-                    'lookup_lines': otherLines,
-                    'ocr_text': rawOcrTextMultiLine,
-                    'consensus': consensus.toJson(includeHistograms: true),
-                  },
-                );
-              }
-              name = fixed;
-              currentVal.nameValid = isValid;
-              aggregator.validation = currentVal;
-              if ((updatedSession.step ?? 0) < 5) {
-                logger.log(
-                  message: "Name validation result: $isValid Looking for ${name.surname}| ${name.givenNames.join(" ")} in\n ${otherLines.join("\n")}",
-                  step: updatedSession.step,
-                  details: {
-                    'source': validationSource,
-                    'parsed_surname': name.surname,
-                    'parsed_given_names': name.givenNames,
-                    'lookup_lines': otherLines,
-                    'ocr_text': rawOcrTextMultiLine,
-                    'consensus': consensus.toJson(includeHistograms: true),
-                  },
-                );
-              }
-
-              if (!currentVal.nameValid) {
-                if ((updatedSession.step ?? 0) < 3) {
+          final docCode = updatedSession.docCode;
+          final countryCode = updatedSession.countryCode ?? updatedSession.nationality;
+          if (docCode != null && countryCode != null) {
+            final line1Start = docCode + countryCode;
+            for (var l in lines) {
+              final line1Candidate = normalize(l);
+              if (line1Candidate.startsWith(line1Start) || l.startsWith(line1Start)) {
+                final parseLine = line1Candidate.startsWith(line1Start) ? line1Candidate : l;
+                MrzName name = parseNamesTd3OrTd2(parseLine);
+                if ((updatedSession.step ?? 0) < 5) {
                   logger.log(
-                    message: "Validation failed: Name validation failed. Looking for ${name.surname} ${name.givenNames.join(" ")} in\n ${otherLines.join("\n")}",
+                    message: "Parsed Names",
                     step: updatedSession.step,
-                    details: {'source': validationSource, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+                    details: {'surname': name.surname, 'givenNames': name.givenNames.join(' '), 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
                   );
                 }
-              }
-
-              if (currentVal.nameValid) {
-                aggregator.addFirstName(name.givenNames.join(" "));
-                aggregator.addLastName(name.surname);
-                aggregator.setNameVizMeta(agreement: name.vizAgreement, needsManual: name.needsManualNameVerification);
+                List<String> otherLines = [...lines.where((a) => a != l), ...aggregator.allOcrLines];
+                var currentVal = aggregator.validation;
+                final (isValid, validationSource, fixed) = name.validateNames(otherLines, setting, names);
+                if (isValid) {
+                  logger.log(
+                    message: "FIXED VALID NAME: ${fixed.full} source ${validationSource}",
+                    step: updatedSession.step,
+                    details: {
+                      'source': validationSource,
+                      'parsed_surname': name.surname,
+                      'parsed_given_names': name.givenNames,
+                      'lookup_lines': otherLines,
+                      'ocr_text': rawOcrTextMultiLine,
+                      'consensus': consensus.toJson(includeHistograms: true),
+                    },
+                  );
+                }
+                name = fixed;
+                currentVal.nameValid = isValid;
+                aggregator.validation = currentVal;
                 if ((updatedSession.step ?? 0) < 5) {
-                  aggregator.setStep(5);
-                  logger.log(message: "Step updated to 5. Name confirmed.", step: 5, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
+                  logger.log(
+                      message: "Name validation result: $isValid Looking for ${name.surname}| ${name.firstName} in\n ${otherLines.join("\n")}",
+                    step: updatedSession.step,
+                    details: {
+                      'source': validationSource,
+                      'parsed_surname': name.surname,
+                      'parsed_given_names': name.givenNames,
+                      'lookup_lines': otherLines,
+                      'ocr_text': rawOcrTextMultiLine,
+                      'consensus': consensus.toJson(includeHistograms: true),
+                    },
+                  );
+                }
+
+                if (!currentVal.nameValid) {
+                  if ((updatedSession.step ?? 0) < 3) {
+                    logger.log(
+                      message: "Validation failed: Name validation failed. Looking for ${name.surname} ${name.firstName} in\n ${otherLines.join("\n")}",
+                      step: updatedSession.step,
+                      details: {'source': validationSource, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+                    );
+                  }
+                }
+
+                if (currentVal.nameValid) {
+                  aggregator.addFirstName(name.firstName);
+                  aggregator.addLastName(name.surname);
+                  aggregator.setNameVizMeta(agreement: name.vizAgreement, needsManual: name.needsManualNameVerification);
+                  if ((updatedSession.step ?? 0) < 5) {
+                    aggregator.setStep(5);
+                    logger.log(message: "Step updated to 5. Name confirmed.", step: 5, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
+                  }
                 }
               }
             }
@@ -568,6 +584,54 @@ String fixAlphaOnlyField(String value) {
   return value.toUpperCase().split('').map((c) => map[c] ?? c).join();
 }
 
+class _MrzHeaderCandidate {
+  final String docCode;
+  final String countryCode;
+  final bool docCodeValid;
+  final bool countryValid;
+  final String source;
+
+  const _MrzHeaderCandidate({required this.docCode, required this.countryCode, required this.docCodeValid, required this.countryValid, required this.source});
+}
+
+_MrzHeaderCandidate? _resolveMrzHeader({required List<String> lines, required String lineAboveDoc, required String nationality}) {
+  final natFixed = fixAlphaOnlyField(nationality);
+
+  _MrzHeaderCandidate? fromPrefix(String line, String source) {
+    final normalized = SessionOcrHandlerConsensus.normalize(line);
+    if (normalized.length < 5) return null;
+    final docCode = normalized.substring(0, 2);
+    var countryCode = normalized.substring(2, 5);
+    final docCodeValid = DocumentCodeHelper.isValid(docCode);
+    var countryValid = isValidMrzCountry(countryCode);
+    if (!countryValid && isValidMrzCountry(fixAlphaOnlyField(countryCode))) {
+      countryCode = fixAlphaOnlyField(countryCode);
+      countryValid = true;
+    }
+    if (!docCodeValid && !countryValid) return null;
+    return _MrzHeaderCandidate(docCode: docCode, countryCode: countryCode, docCodeValid: docCodeValid, countryValid: countryValid, source: source);
+  }
+
+  final above = fromPrefix(lineAboveDoc, 'line_above_doc');
+  if (above != null && above.docCodeValid && above.countryValid) return above;
+
+  for (var i = 0; i < lines.length; i++) {
+    final candidate = fromPrefix(lines[i], 'line_$i');
+    if (candidate != null && candidate.docCodeValid && candidate.countryValid) return candidate;
+  }
+
+  final natLine = lines.map(SessionOcrHandlerConsensus.normalize).firstWhere((l) => l.contains(natFixed) && l.length >= 15, orElse: () => '');
+  if (natLine.isNotEmpty) {
+    final idx = natLine.indexOf(natFixed);
+    if (idx >= 2) {
+      final passportHeader = _MrzHeaderCandidate(docCode: 'P<', countryCode: natFixed, docCodeValid: true, countryValid: isValidMrzCountry(natFixed), source: 'nationality_fallback');
+      if (passportHeader.countryValid) return passportHeader;
+    }
+  }
+
+  return above ?? fromPrefix(lineAboveDoc, 'line_above_doc_relaxed');
+}
+
 String fixOcrBeforeNatOnly(String input, String natOnly) {
   if (natOnly.isEmpty) return input;
 
@@ -615,4 +679,23 @@ String fixOcrBeforeNatOnly(String input, String natOnly) {
   }
 
   return sb.toString();
+}
+
+/// Locates the TD1 MRZ name line (contains `<<`), preferring the line after the birth-date line.
+String? _findTd1NameLine(List<String> lines, String birthDate) {
+  final line2Index = lines.indexWhere((a) => SessionOcrHandlerConsensus.normalize(a).startsWith(birthDate));
+  if (line2Index != -1 && line2Index + 1 < lines.length) {
+    final candidate = SessionOcrHandlerConsensus.normalize(lines[line2Index + 1]);
+    if (candidate.contains('<<')) return lines[line2Index + 1];
+  }
+
+  // Fallback: any MRZ-style name line (not the document-type line starting with I/P).
+  for (final line in lines) {
+    final n = SessionOcrHandlerConsensus.normalize(line);
+    if (n.length < 20 || !n.contains('<<')) continue;
+    if (n.startsWith('I<') || n.startsWith('P<') || n.startsWith('A<')) continue;
+    if (RegExp(r'^\d').hasMatch(n)) continue;
+    return line;
+  }
+  return null;
 }

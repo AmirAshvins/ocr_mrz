@@ -521,7 +521,7 @@ class MyOcrHandlerNew {
               if (name != null) {
                 var (a, _, fixed) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
                 name = fixed;
-                firstName = name.givenNames.join(" ");
+                firstName = name.firstName;
                 lastName = name.surname;
                 nameVizAgreement = name.vizAgreement;
                 needsManualNameVerification = name.needsManualNameVerification;

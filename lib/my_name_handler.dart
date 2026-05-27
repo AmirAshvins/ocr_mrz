@@ -20,6 +20,7 @@ class MrzName {
   final List<String> rawGivenNames; // e.g. ["ANNA", "MARIA"]
   final String surname; // pretty (spaces, trimmed)
   final List<String> givenNames; // pretty
+  final String givenDisplay; // preserves visual separators such as hyphen
   final String full; // "ERIKSSON ANNA MARIA"
   final VizNameAgreement vizAgreement;
   final bool needsManualNameVerification;
@@ -29,23 +30,26 @@ class MrzName {
     required this.rawGivenNames,
     required this.surname,
     required this.givenNames,
+    required this.givenDisplay,
     required this.full,
     this.vizAgreement = VizNameAgreement.skipped,
     this.needsManualNameVerification = false,
   });
 
-  String get firstName => givenNames.join(" ");
+  String get firstName => givenDisplay;
 
   String get lastName => surname;
 
   MrzName applyVizLookup(VizNameLookupResult viz) {
     final given = viz.givenNames.isNotEmpty ? viz.givenNames : givenNames;
-    final fullPretty = [if (viz.surname.isNotEmpty) viz.surname, if (given.isNotEmpty) given.join(' ')].join(' ').trim();
+    final givenPretty = viz.givenDisplay.trim().isEmpty ? givenDisplay : viz.givenDisplay;
+    final fullPretty = [if (viz.surname.isNotEmpty) viz.surname, if (givenPretty.isNotEmpty) givenPretty].join(' ').trim();
     return MrzName(
       rawSurname: rawSurname,
       rawGivenNames: rawGivenNames,
       surname: viz.surname,
       givenNames: given,
+      givenDisplay: givenPretty,
       full: fullPretty,
       vizAgreement: viz.agreement,
       needsManualNameVerification: viz.needsManualNameVerification,
@@ -127,7 +131,7 @@ class MrzName {
   (bool, String, MrzName) _withVizLookup(Iterable<String> lines, String sourcePrefix) {
     final viz = applyVizNameLookup(surname: surname, givenNames: givenNames, ocrLines: lines);
     final updated = applyVizLookup(viz);
-  final source = viz.agreement == VizNameAgreement.strong ? '${sourcePrefix}_viz_strong' : '${sourcePrefix}_viz_weak';
+    final source = viz.agreement == VizNameAgreement.strong ? '${sourcePrefix}_viz_strong' : '${sourcePrefix}_viz_weak';
     return (true, source, updated);
   }
 }
@@ -150,8 +154,9 @@ MrzName _parseNamesField(String namesField) {
   final givenPretty = rawGivenNames.map(_pretty).where((p) => p.isNotEmpty).toList();
 
   final fullPretty = [if (surnamePretty.isNotEmpty) surnamePretty, if (givenPretty.isNotEmpty) givenPretty.join(' ')].join(' ').trim();
+  final givenDisplay = givenPretty.join(' ').trim();
 
-  return MrzName(rawSurname: rawSurname, rawGivenNames: rawGivenNames, surname: surnamePretty, givenNames: givenPretty, full: fullPretty);
+  return MrzName(rawSurname: rawSurname, rawGivenNames: rawGivenNames, surname: surnamePretty, givenNames: givenPretty, givenDisplay: givenDisplay, full: fullPretty);
 }
 
 /// TD3 & TD2: names are on line 1 after the first 5 chars (docType+issuer).

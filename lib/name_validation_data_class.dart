@@ -14,5 +14,12 @@ class NameValidationData {
   String get fullname => "${firstName}${middleName} ${lastName}";
 
   MrzName toMrzName() =>
-      MrzName(rawSurname: lastName, rawGivenNames: firstName.split(" ").toList(), surname: lastName, givenNames: firstName.split(" ").toList(), full: "$lastName $middleName $firstName");
+      MrzName(
+        rawSurname: lastName,
+        rawGivenNames: firstName.split(" ").toList(),
+        surname: lastName,
+        givenNames: firstName.split(" ").toList(),
+        givenDisplay: firstName,
+        full: "$lastName $middleName $firstName",
+      );
 }
