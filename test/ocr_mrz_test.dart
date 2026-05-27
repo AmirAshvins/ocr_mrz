@@ -81,6 +81,69 @@ FILIACAO PARENTS LINE SERGIO CARVALHAIS
     expect(consensus.toResult().matchSetting(relaxed), isTrue);
   });
 
+  test('Spanish TD3 date line found when OCR splits line 2 with spaces', () {
+    final ctrl = OcrMrzController();
+    final handler = SessionOcrHandlerConsensus(logger: ctrl.logger);
+    const ocrText = '''
+ROYO MARTORI MARIA SALOME
+04 05 1947
+PAZ6546254 ESP4705048F3604247A3875622700<<<48
+''';
+    final ocr = OcrData(
+      text: ocrText,
+      lines: ocrText.split('\n').where((l) => l.trim().isNotEmpty).map((a) => OcrLine(text: a.trim(), cornerPoints: [])).toList(),
+    );
+    final relaxed = OcrMrzSetting(
+      validateNames: false,
+      validateDocNumberValid: false,
+      validateCountry: false,
+      validateNationality: false,
+      validateBirthDateValid: false,
+      validateExpiryDateValid: false,
+      nameValidationMode: NameValidationMode.none,
+    );
+    handler.handleSession(ctrl.aggregator, ocr, relaxed, []);
+    final status = ctrl.aggregator.buildStatus();
+    expect(status.step, greaterThanOrEqualTo(2));
+    expect(status.birthDate, isNotEmpty);
+    expect(status.expiryDate, isNotEmpty);
+    expect(status.sex, isNotEmpty);
+  });
+
+  test('single-digit birth date noise does not reset session at step 5', () {
+    final ctrl = OcrMrzController();
+    final handler = SessionOcrHandlerConsensus(logger: ctrl.logger);
+    const good = '''
+P<ESPROYO<MARTORI<<MARIA<SALOME<<<<<<<<<<<<<<<
+PAZ6546254ESP4705048F3604247A3875622700<<<48
+''';
+    final ocrGood = OcrData(
+      text: good,
+      lines: good.split('\n').where((l) => l.trim().isNotEmpty).map((a) => OcrLine(text: a.trim(), cornerPoints: [])).toList(),
+    );
+    const noisyBirth = '''
+P<ESPROYO<MARTORI<<MARIA<SALOME<<<<<<<<<<<<<<<
+PAZ6546254ESP4705049F3604247A3875622700<<<48
+''';
+    final ocrNoisy = OcrData(
+      text: noisyBirth,
+      lines: noisyBirth.split('\n').where((l) => l.trim().isNotEmpty).map((a) => OcrLine(text: a.trim(), cornerPoints: [])).toList(),
+    );
+    final relaxed = OcrMrzSetting(
+      validateNames: false,
+      validateDocNumberValid: false,
+      validateCountry: false,
+      validateNationality: false,
+      validateBirthDateValid: false,
+      validateExpiryDateValid: false,
+      nameValidationMode: NameValidationMode.none,
+    );
+    handler.handleSession(ctrl.aggregator, ocrGood, relaxed, []);
+    expect(ctrl.aggregator.buildStatus().step, greaterThanOrEqualTo(5));
+    handler.handleSession(ctrl.aggregator, ocrNoisy, relaxed, []);
+    expect(ctrl.aggregator.buildStatus().step, greaterThanOrEqualTo(5));
+  });
+
   test("Armenian passport TD3 reaches step 4", () {
     final armController = OcrMrzController();
     final armHandler = SessionOcrHandlerConsensus(logger: armController.logger);

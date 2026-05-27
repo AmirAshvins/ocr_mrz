@@ -8,7 +8,19 @@ import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/session_logger.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
-final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
+final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX<])(\d{6})(\d)', caseSensitive: false);
+
+/// True when OCR birth date changes enough to treat as a different document.
+bool _isDistinctMrzBirth(String? prior, String candidate, int currentStep) {
+  if (prior == null || prior.length != 6 || candidate.length != 6) return false;
+  if (prior == candidate) return false;
+  if (currentStep >= 5) return false;
+  var diff = 0;
+  for (var i = 0; i < 6; i++) {
+    if (prior[i] != candidate[i]) diff++;
+  }
+  return diff >= 2;
+}
 
 class SessionOcrHandlerConsensus {
   final SessionLogger logger;
@@ -20,11 +32,6 @@ class SessionOcrHandlerConsensus {
       final rawOcrText = ocr.text.replaceAll('\n', ' ');
       final rawOcrTextMultiLine = ocr.text;
       var updatedSession = aggregator.buildStatus();
-      if ((updatedSession.step ?? 0) > 0) {
-        if (!ocr.text.contains("<")) {
-          return aggregator.build();
-        }
-      }
       final consensus = aggregator.build();
       logger.log(message: "--- New OCR Frame ---", step: updatedSession.step, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
       final List<String> lines = ocr.lines.map((a) => a.text).toList();
@@ -32,10 +39,10 @@ class SessionOcrHandlerConsensus {
       updatedSession = aggregator.buildStatus();
       logger.log(message: "Current Step: ${updatedSession.step}", step: updatedSession.step, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
 
-      String secondLineGuess = _findDateSexLine(lines);
-      if (secondLineGuess.isEmpty && (updatedSession.step ?? 0) >= 2) {
-        secondLineGuess = _findDateSexLine(aggregator.allOcrLines);
-      }
+      String secondLineGuess = _findDateSexLine(
+        lines,
+        extraSources: [rawOcrTextMultiLine, rawOcrText, ...aggregator.allOcrLines],
+      );
       if (secondLineGuess.isNotEmpty) {
         final dateSexMatch = _dateSexRe.firstMatch(secondLineGuess);
         final birthDateStr = dateSexMatch!.group(1);
@@ -73,13 +80,17 @@ class SessionOcrHandlerConsensus {
 
         if (birthDateValid && expDateValid) {
           final priorBirth = aggregator.buildStatus().birthDate;
-          if (priorBirth != null && priorBirth.isNotEmpty && priorBirth != birthDateStr) {
+          final stepNow = updatedSession.step ?? 0;
+          if (_isDistinctMrzBirth(priorBirth, birthDateStr, stepNow)) {
             logger.log(
               message: "New birth date detected. Resetting session.",
               step: updatedSession.step,
-              details: {'new_birth_date': birthDateStr, 'old_birth_date': aggregator.buildStatus().birthDate, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+              details: {'new_birth_date': birthDateStr, 'old_birth_date': priorBirth, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
             );
             aggregator.reset();
+          }
+          if (secondLineGuess.isNotEmpty) {
+            aggregator.addMrzLine2(secondLineGuess);
           }
           aggregator.addBirthDate(birthDateStr);
           aggregator.addExpiryDate(expiryDateStr);
@@ -105,7 +116,11 @@ class SessionOcrHandlerConsensus {
         final dateSexMatchCheck = _dateSexRe.firstMatch(secondLineGuess);
         final frameBirth = dateSexMatchCheck?.group(1);
         final sessionBirth = updatedSession.birthDate;
-        if (frameBirth != null && sessionBirth != null && sessionBirth.isNotEmpty && frameBirth != sessionBirth) {
+        final stepNow = updatedSession.step ?? 0;
+        if (frameBirth != null &&
+            sessionBirth != null &&
+            sessionBirth.isNotEmpty &&
+            _isDistinctMrzBirth(sessionBirth, frameBirth, stepNow)) {
           logger.log(
             message: "New document detected based on birth date change. Resetting session.",
             step: updatedSession.step,
@@ -181,6 +196,10 @@ class SessionOcrHandlerConsensus {
               }
               aggregator.validation = currentVal;
               aggregator.setType(type);
+              if (line1.isNotEmpty) {
+                aggregator.addMrzLine1(line1);
+              }
+              aggregator.addMrzLine2(l);
               if ((updatedSession.step ?? 0) < 3) {
                 aggregator.setStep(3);
                 logger.log(
@@ -423,6 +442,10 @@ class SessionOcrHandlerConsensus {
               final line1Candidate = normalize(l);
               if (line1Candidate.startsWith(line1Start) || l.startsWith(line1Start)) {
                 final parseLine = line1Candidate.startsWith(line1Start) ? line1Candidate : l;
+                aggregator.addMrzLine1(parseLine);
+                if (secondLineGuess.isNotEmpty) {
+                  aggregator.addMrzLine2(secondLineGuess);
+                }
                 MrzName name = parseNamesTd3OrTd2(parseLine);
                 if ((updatedSession.step ?? 0) < 5) {
                   logger.log(
@@ -683,13 +706,38 @@ String fixOcrBeforeNatOnly(String input, String natOnly) {
 }
 
 /// Finds the MRZ date/sex line (YYMMDD + check + sex + expiry + check), including noisy OCR.
-String _findDateSexLine(List<String> lines) {
-  for (final raw in lines) {
+String _findDateSexLine(List<String> lines, {List<String> extraSources = const []}) {
+  final sources = <String>[...lines, ...extraSources];
+
+  for (final raw in sources) {
     if (raw.trim().isEmpty) continue;
     final normalized = SessionOcrHandlerConsensus.normalize(raw);
-    if (_dateSexRe.hasMatch(normalized)) return normalized;
+    if (normalized.length < 15) continue;
+    final match = _dateSexRe.firstMatch(normalized);
+    if (match != null) return match.group(0)!;
     final compact = normalized.replaceAll(RegExp(r'[^0-9MFX<]'), '');
-    if (_dateSexRe.hasMatch(compact)) return compact;
+    final matchCompact = _dateSexRe.firstMatch(compact);
+    if (matchCompact != null) return matchCompact.group(0)!;
+  }
+
+  final joined = StringBuffer();
+  for (final raw in sources) {
+    if (raw.trim().isEmpty) continue;
+    joined.write(SessionOcrHandlerConsensus.normalize(raw));
+  }
+  final blob = joined.toString();
+  if (blob.length < 15) return '';
+
+  final blobMatch = _dateSexRe.firstMatch(blob);
+  if (blobMatch != null) return blobMatch.group(0)!;
+
+  // TD3 line 2 embeds the date block inside a longer string; slide when OCR merges fields.
+  const window = 20;
+  for (var i = 0; i + 15 <= blob.length; i++) {
+    final end = (i + window > blob.length) ? blob.length : i + window;
+    final slice = blob.substring(i, end);
+    final m = _dateSexRe.firstMatch(slice);
+    if (m != null) return m.group(0)!;
   }
   return '';
 }

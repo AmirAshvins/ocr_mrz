@@ -414,6 +414,18 @@ class OcrMrzAggregator {
     if (cleaned.isNotEmpty) _docNo.add(cleaned);
   }
 
+  /// Vote on MRZ line 1 discovered during session stepping (not only full parse).
+  void addMrzLine1(String line) {
+    final trimmed = line.trim();
+    if (trimmed.isNotEmpty) _line1.add(trimmed);
+  }
+
+  /// Vote on MRZ line 2 discovered during session stepping (not only full parse).
+  void addMrzLine2(String line) {
+    final trimmed = line.trim();
+    if (trimmed.isNotEmpty) _line2.add(trimmed);
+  }
+
   void addFirstName(String name) {
     _fname.add(name);
   }
