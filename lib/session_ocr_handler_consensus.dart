@@ -32,7 +32,10 @@ class SessionOcrHandlerConsensus {
       updatedSession = aggregator.buildStatus();
       logger.log(message: "Current Step: ${updatedSession.step}", step: updatedSession.step, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
 
-      String secondLineGuess = lines.firstWhere((a) => _dateSexRe.hasMatch(a), orElse: () => '');
+      String secondLineGuess = _findDateSexLine(lines);
+      if (secondLineGuess.isEmpty && (updatedSession.step ?? 0) >= 2) {
+        secondLineGuess = _findDateSexLine(aggregator.allOcrLines);
+      }
       if (secondLineGuess.isNotEmpty) {
         final dateSexMatch = _dateSexRe.firstMatch(secondLineGuess);
         final birthDateStr = dateSexMatch!.group(1);
@@ -88,14 +91,12 @@ class SessionOcrHandlerConsensus {
             logger.log(message: "Step updated to 2. Found valid birth and expiry dates.", step: 2, details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)});
           }
         }
-      } else {
-        if ((updatedSession.step ?? 0) < 2) {
-          logger.log(
-            message: "RegExp search for date/sex line failed to find a match.",
-            step: updatedSession.step,
-            details: {'pattern': _dateSexRe.pattern, 'searched_lines': lines, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
-          );
-        }
+      } else if ((updatedSession.step ?? 0) < 2) {
+        logger.log(
+          message: "RegExp search for date/sex line failed to find a match.",
+          step: updatedSession.step,
+          details: {'pattern': _dateSexRe.pattern, 'searched_lines': lines, 'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
+        );
       }
 
       updatedSession = aggregator.buildStatus();
@@ -679,6 +680,18 @@ String fixOcrBeforeNatOnly(String input, String natOnly) {
   }
 
   return sb.toString();
+}
+
+/// Finds the MRZ date/sex line (YYMMDD + check + sex + expiry + check), including noisy OCR.
+String _findDateSexLine(List<String> lines) {
+  for (final raw in lines) {
+    if (raw.trim().isEmpty) continue;
+    final normalized = SessionOcrHandlerConsensus.normalize(raw);
+    if (_dateSexRe.hasMatch(normalized)) return normalized;
+    final compact = normalized.replaceAll(RegExp(r'[^0-9MFX<]'), '');
+    if (_dateSexRe.hasMatch(compact)) return compact;
+  }
+  return '';
 }
 
 /// Locates the TD1 MRZ name line (contains `<<`), preferring the line after the birth-date line.
