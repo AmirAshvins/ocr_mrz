@@ -14,7 +14,7 @@ final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX<])(\d{6})(\d)', caseSensitive: fals
 bool _isDistinctMrzBirth(String? prior, String candidate, int currentStep) {
   if (prior == null || prior.length != 6 || candidate.length != 6) return false;
   if (prior == candidate) return false;
-  if (currentStep >= 5) return false;
+  if (currentStep >= 4) return false;
   var diff = 0;
   for (var i = 0; i < 6; i++) {
     if (prior[i] != candidate[i]) diff++;
@@ -387,7 +387,7 @@ class SessionOcrHandlerConsensus {
             details: {'ocr_text': rawOcrTextMultiLine, 'consensus': consensus.toJson(includeHistograms: true)},
           );
         }
-        if (updatedSession.type == "td1") {
+        if (updatedSession.type == "td1" && (updatedSession.step ?? 0) < 5) {
           final birthDate = updatedSession.birthDate;
           if (birthDate != null) {
             final nameLineRaw = _findTd1NameLine(lines, birthDate);
@@ -742,20 +742,39 @@ String _findDateSexLine(List<String> lines, {List<String> extraSources = const [
   return '';
 }
 
+/// True when OCR text looks like MRZ line 2 (dates/sex/nationality), not a name line.
+bool _looksLikeMrzDateSexLine(String normalized) {
+  if (normalized.length < 14) return false;
+  final compact = normalized.replaceAll(RegExp(r'[^0-9MFX<]'), '');
+  if (_dateSexRe.hasMatch(compact)) return true;
+  if (RegExp(r'\d{6}[0-9MF<]\d{6}').hasMatch(compact)) return true;
+  if (normalized.contains('HUN') && RegExp(r'\d{4,}').hasMatch(normalized) && !normalized.contains('<<')) {
+    return true;
+  }
+  return false;
+}
+
+bool _isPlausibleTd1NameLine(String normalized) {
+  if (normalized.length < 15 || !normalized.contains('<<')) return false;
+  if (_looksLikeMrzDateSexLine(normalized)) return false;
+  if (normalized.startsWith('I<') || normalized.startsWith('P<') || normalized.startsWith('A<')) return false;
+  if (RegExp(r'^\d').hasMatch(normalized)) return false;
+  final letters = normalized.replaceAll('<', '').replaceAll(RegExp(r'[^A-Z]'), '');
+  return letters.length >= 6;
+}
+
 /// Locates the TD1 MRZ name line (contains `<<`), preferring the line after the birth-date line.
 String? _findTd1NameLine(List<String> lines, String birthDate) {
   final line2Index = lines.indexWhere((a) => SessionOcrHandlerConsensus.normalize(a).startsWith(birthDate));
   if (line2Index != -1 && line2Index + 1 < lines.length) {
     final candidate = SessionOcrHandlerConsensus.normalize(lines[line2Index + 1]);
-    if (candidate.contains('<<')) return lines[line2Index + 1];
+    if (_isPlausibleTd1NameLine(candidate)) return lines[line2Index + 1];
   }
 
   // Fallback: any MRZ-style name line (not the document-type line starting with I/P).
   for (final line in lines) {
     final n = SessionOcrHandlerConsensus.normalize(line);
-    if (n.length < 20 || !n.contains('<<')) continue;
-    if (n.startsWith('I<') || n.startsWith('P<') || n.startsWith('A<')) continue;
-    if (RegExp(r'^\d').hasMatch(n)) continue;
+    if (!_isPlausibleTd1NameLine(n)) continue;
     return line;
   }
   return null;
