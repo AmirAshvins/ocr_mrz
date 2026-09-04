@@ -31,9 +31,9 @@ class OcrMrzControllerNew extends CameraKitPlusController {
     _sessionStartTime = DateTime.now();
   }
 
-  /// Disposes API config notifier. Unbind the camera channel via [unbind] /
-  /// [disposeView] when the platform view goes away.
+  /// Disposes API config notifier and unbinds any per-view camera channel.
   void dispose() {
     _apiConfigNotifier.dispose();
+    unbind();
   }
 }

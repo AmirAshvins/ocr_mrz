@@ -74,9 +74,11 @@ class OcrMrzController extends CameraKitPlusController {
     _sessionHistory.value = [..._sessionHistory.value, s];
   }
 
+  /// Disposes MRZ session resources and unbinds any per-view camera channel.
   void dispose() {
     logger.dispose();
     _apiConfigNotifier.dispose();
+    unbind();
   }
 
   debug(String s, ParseAlgorithm alg, void Function(OcrMrzResult res) onFoundMrz) {
@@ -278,7 +280,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
   @override
   void dispose() {
     _stopApiTimer();
-    widget.controller.pauseCamera();
+    // CameraKitOcrPlusView already unbinds/disposes the channel in its dispose.
     widget.controller.apiConfigNotifier.removeListener(_onApiConfigChanged);
     super.dispose();
   }
