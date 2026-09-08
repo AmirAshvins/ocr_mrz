@@ -42,13 +42,15 @@ class MajorityCounter<T> {
 
 String _normCode(String v) => v.trim().toUpperCase();
 
-String _normName(String v) => v.trim(); // keep case; MRZ names are uppercase anyway
+String _normName(String v) =>
+    v.trim(); // keep case; MRZ names are uppercase anyway
 
 String _normSex(String v) => v.trim().toUpperCase(); // 'M','F','X','<'
 
 String _normString(String v) => v.trim();
 
-String _dateKey(DateTime d) => d.toIso8601String().split('T').first; // yyyy-MM-dd
+String _dateKey(DateTime d) =>
+    d.toIso8601String().split('T').first; // yyyy-MM-dd
 
 // DateTime _parseDateKey(String k) {
 //   // k is in yyyy-MM-dd format
@@ -83,7 +85,11 @@ class FieldStat<T> {
   final int consensusCount;
   final Map<T, int> histogram;
 
-  FieldStat({required this.consensus, required this.consensusCount, required this.histogram});
+  FieldStat({
+    required this.consensus,
+    required this.consensusCount,
+    required this.histogram,
+  });
 }
 
 class OcrMrzConsensus {
@@ -189,7 +195,12 @@ class OcrMrzConsensus {
       optionalData: optionalData ?? '',
       valid: sessionValidation,
       // fresh; you could pass something smarter here
-      checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
+      checkDigits: CheckDigits(
+        document: false,
+        birth: false,
+        expiry: false,
+        optional: false,
+      ),
       ocrData: OcrData(text: '', lines: []),
       format: format,
       nameVizAgreement: nameVizAgreement,
@@ -204,7 +215,9 @@ class OcrMrzConsensus {
     void logField(String name, FieldStat stat) {
       final ok = stat.consensus != null && stat.consensus.toString().isNotEmpty;
       final emoji = ok ? '✅' : '❌';
-      buf.write('$name: ${stat.consensus ?? "-"}  ($emoji ${stat.consensusCount}) \t');
+      buf.write(
+        '$name: ${stat.consensus ?? "-"}  ($emoji ${stat.consensusCount}) \t',
+      );
     }
 
     logField("CountryCode", countryCodeStat);
@@ -228,7 +241,11 @@ class OcrMrzConsensus {
 
   Map<String, dynamic> toJson({bool includeHistograms = false}) {
     Map<String, dynamic> fieldToJson(FieldStat stat) {
-      return {"value": stat.consensus, "count": stat.consensusCount, if (includeHistograms) "histogram": stat.histogram};
+      return {
+        "value": stat.consensus,
+        "count": stat.consensusCount,
+        if (includeHistograms) "histogram": stat.histogram,
+      };
     }
 
     return {
@@ -253,11 +270,11 @@ class OcrMrzConsensus {
 
   /// How settled the scanned name fields are across recent frames.
   MrzNameConfidence get nameConfidence => mrzNameConfidenceFromCounts(
-        firstNameConsensusCount: firstNameStat.consensusCount,
-        firstNameHistogram: firstNameStat.histogram,
-        lastNameConsensusCount: lastNameStat.consensusCount,
-        lastNameHistogram: lastNameStat.histogram,
-      );
+    firstNameConsensusCount: firstNameStat.consensusCount,
+    firstNameHistogram: firstNameStat.histogram,
+    lastNameConsensusCount: lastNameStat.consensusCount,
+    lastNameHistogram: lastNameStat.histogram,
+  );
 
   bool get isNameStillStabilizing => nameConfidence == MrzNameConfidence.low;
 }
@@ -311,7 +328,8 @@ class OcrMrzAggregator {
     }
 
     // Country / issuing state:
-    if (v.countryValid && r.countryCode.trim().isNotEmpty) _country.add(r.countryCode);
+    if (v.countryValid && r.countryCode.trim().isNotEmpty)
+      _country.add(r.countryCode);
     // Issuing state has no dedicated flag; fall back to countryValid if passport/TD3, or accept when not empty
     if ((r.isPassport && v.countryValid) || r.issuingState.trim().isNotEmpty) {
       _issuing.add(r.issuingState.isNotEmpty ? r.issuingState : r.countryCode);
@@ -336,7 +354,8 @@ class OcrMrzAggregator {
     }
 
     // Nationality
-    if (v.nationalityValid && r.nationality.trim().isNotEmpty) _nat.add(r.nationality);
+    if (v.nationalityValid && r.nationality.trim().isNotEmpty)
+      _nat.add(r.nationality);
 
     // Dates
     // if (v.birthDateValid && (cd.birth == true) && r.birthDate != null) {
@@ -434,7 +453,10 @@ class OcrMrzAggregator {
     _lname.add(name);
   }
 
-  void setNameVizMeta({required VizNameAgreement agreement, required bool needsManual}) {
+  void setNameVizMeta({
+    required VizNameAgreement agreement,
+    required bool needsManual,
+  }) {
     nameVizAgreement = agreement;
     needsManualNameVerification = needsManual;
   }
@@ -466,12 +488,21 @@ class OcrMrzAggregator {
     _type = type;
   }
 
+  /// Records OCR lines for this frame, keeping only the last 40 frames.
+  ///
+  /// An unbounded history would grow for the whole live session and make
+  /// consensus / `allOcrLines` scans progressively more expensive.
   void addFrameLines(List<String> lines) {
     _ocrLinesHistory.add(lines);
+    const int maxFrames = 40;
+    if (_ocrLinesHistory.length > maxFrames) {
+      _ocrLinesHistory.removeRange(0, _ocrLinesHistory.length - maxFrames);
+    }
   }
 
   /// All OCR lines seen across all frames (flattened, deduplicated).
-  List<String> get allOcrLines => _ocrLinesHistory.expand((f) => f).toSet().toList();
+  List<String> get allOcrLines =>
+      _ocrLinesHistory.expand((f) => f).toSet().toList();
 
   bool sessionScannedData(String data) {
     return _ocrLinesHistory.any((a) => a.join("\n").contains(data));
@@ -505,11 +536,18 @@ class OcrMrzAggregator {
     // log("${FieldStat(consensus: docNo, consensusCount: _pickCnt(_numCheck), histogram: _numCheck.snapshot()).histogram}");
     // log("${FieldStat(consensus: docNumWithCheck, consensusCount: _pickCnt(_numWithCheck), histogram: _numWithCheck.snapshot()).histogram}");
 
-    final mostDocCode = mostCommonFirst2Prefixes(_ocrLinesHistory, country ?? nat ?? issuing ?? '   ');
+    final mostDocCode = mostCommonFirst2Prefixes(
+      _ocrLinesHistory,
+      country ?? nat ?? issuing ?? '   ',
+    );
     final resolvedCountry = country ?? nat;
     final built = OcrMrzConsensus(
-      countryCode: resolvedCountry == null ? null : fixAlphaOnlyField(resolvedCountry),
-      issuingState: (issuing ?? country) == null ? null : fixAlphaOnlyField((issuing ?? country)!),
+      countryCode:
+          resolvedCountry == null ? null : fixAlphaOnlyField(resolvedCountry),
+      issuingState:
+          (issuing ?? country) == null
+              ? null
+              : fixAlphaOnlyField((issuing ?? country)!),
       docCode: mostDocCode,
       // fallback
       documentNumber: docNo,
@@ -525,22 +563,86 @@ class OcrMrzAggregator {
       line2: l2,
       line3: l3,
       docType: docType,
-      countryCodeStat: FieldStat(consensus: country, consensusCount: _pickCnt(_country), histogram: _country.snapshot()),
-      docCodeStat: FieldStat(consensus: docCode, consensusCount: _pickCnt(_docCode), histogram: _docCode.snapshot()),
-      issuingStateStat: FieldStat(consensus: issuing, consensusCount: _pickCnt(_issuing), histogram: _issuing.snapshot()),
-      documentNumberStat: FieldStat(consensus: docNo, consensusCount: _pickCnt(_docNo), histogram: _docNo.snapshot()),
-      lastNameStat: FieldStat(consensus: lname, consensusCount: _pickCnt(_lname), histogram: _lname.snapshot()),
-      firstNameStat: FieldStat(consensus: fname, consensusCount: _pickCnt(_fname), histogram: _fname.snapshot()),
-      nationalityStat: FieldStat(consensus: nat, consensusCount: _pickCnt(_nat), histogram: _nat.snapshot()),
-      sexStat: FieldStat(consensus: sex, consensusCount: _pickCnt(_sex), histogram: _sex.snapshot()),
-      personalNumberStat: FieldStat(consensus: pnum, consensusCount: _pickCnt(_pnum), histogram: _pnum.snapshot()),
-      optionalDataStat: FieldStat(consensus: opt, consensusCount: _pickCnt(_opt), histogram: _opt.snapshot()),
-      line1Stat: FieldStat(consensus: l1, consensusCount: _pickCnt(_line1), histogram: _line1.snapshot()),
-      line2Stat: FieldStat(consensus: l2, consensusCount: _pickCnt(_line2), histogram: _line2.snapshot()),
-      line3Stat: FieldStat(consensus: l3, consensusCount: _pickCnt(_line3), histogram: _line3.snapshot()),
-      birthDateStat: FieldStat(consensus: birthKey, consensusCount: _pickCnt(_birth), histogram: _birth.snapshot()),
-      expiryDateStat: FieldStat(consensus: expiryKey, consensusCount: _pickCnt(_expiry), histogram: _expiry.snapshot()),
-      docTypeStat: FieldStat(consensus: docType, consensusCount: _pickCnt(_docType), histogram: _docType.snapshot()),
+      countryCodeStat: FieldStat(
+        consensus: country,
+        consensusCount: _pickCnt(_country),
+        histogram: _country.snapshot(),
+      ),
+      docCodeStat: FieldStat(
+        consensus: docCode,
+        consensusCount: _pickCnt(_docCode),
+        histogram: _docCode.snapshot(),
+      ),
+      issuingStateStat: FieldStat(
+        consensus: issuing,
+        consensusCount: _pickCnt(_issuing),
+        histogram: _issuing.snapshot(),
+      ),
+      documentNumberStat: FieldStat(
+        consensus: docNo,
+        consensusCount: _pickCnt(_docNo),
+        histogram: _docNo.snapshot(),
+      ),
+      lastNameStat: FieldStat(
+        consensus: lname,
+        consensusCount: _pickCnt(_lname),
+        histogram: _lname.snapshot(),
+      ),
+      firstNameStat: FieldStat(
+        consensus: fname,
+        consensusCount: _pickCnt(_fname),
+        histogram: _fname.snapshot(),
+      ),
+      nationalityStat: FieldStat(
+        consensus: nat,
+        consensusCount: _pickCnt(_nat),
+        histogram: _nat.snapshot(),
+      ),
+      sexStat: FieldStat(
+        consensus: sex,
+        consensusCount: _pickCnt(_sex),
+        histogram: _sex.snapshot(),
+      ),
+      personalNumberStat: FieldStat(
+        consensus: pnum,
+        consensusCount: _pickCnt(_pnum),
+        histogram: _pnum.snapshot(),
+      ),
+      optionalDataStat: FieldStat(
+        consensus: opt,
+        consensusCount: _pickCnt(_opt),
+        histogram: _opt.snapshot(),
+      ),
+      line1Stat: FieldStat(
+        consensus: l1,
+        consensusCount: _pickCnt(_line1),
+        histogram: _line1.snapshot(),
+      ),
+      line2Stat: FieldStat(
+        consensus: l2,
+        consensusCount: _pickCnt(_line2),
+        histogram: _line2.snapshot(),
+      ),
+      line3Stat: FieldStat(
+        consensus: l3,
+        consensusCount: _pickCnt(_line3),
+        histogram: _line3.snapshot(),
+      ),
+      birthDateStat: FieldStat(
+        consensus: birthKey,
+        consensusCount: _pickCnt(_birth),
+        histogram: _birth.snapshot(),
+      ),
+      expiryDateStat: FieldStat(
+        consensus: expiryKey,
+        consensusCount: _pickCnt(_expiry),
+        histogram: _expiry.snapshot(),
+      ),
+      docTypeStat: FieldStat(
+        consensus: docType,
+        consensusCount: _pickCnt(_docType),
+        histogram: _docType.snapshot(),
+      ),
 
       mrzLines: buildMrz(hideName: maskName),
       nameVizAgreement: nameVizAgreement,
@@ -649,17 +751,21 @@ class OcrMrzAggregator {
     }
 
     if (_type == "td1") {
-      String line1 = "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${_pickStr(_docNo)}${_pickStr(_numCheck)}".padRight(30, "<");
-      String line2 = "${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}${_pickStr(_nat)}".padRight(30, "<");
+      String line1 =
+          "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${_pickStr(_docNo)}${_pickStr(_numCheck)}"
+              .padRight(30, "<");
+      String line2 =
+          "${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}${_pickStr(_nat)}"
+              .padRight(30, "<");
       String line3 = "${lastName}<<${firstName}".padRight(30, "<");
       lines.addAll([line1, line2, line3]);
     } else if (_type == "td2" || _type == "td3") {
-      String line1 = "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${"${lastName}<<${firstName}"}".padRight(44, "<");
+      String line1 =
+          "${_pickStr(_docCode)?.padRight(2, "<")}${_pickStr(_issuing)}${"${lastName}<<${firstName}"}"
+              .padRight(44, "<");
       String line2 =
-          "${_pickStr(_docNo)?.padRight(9, "<")}${_pickStr(_numCheck)}${_pickStr(_nat)}${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}".padRight(
-            44,
-            "<",
-          );
+          "${_pickStr(_docNo)?.padRight(9, "<")}${_pickStr(_numCheck)}${_pickStr(_nat)}${_pickStr(_birth)}${_pickStr(_birthCheck)}${_pickStr(_sex)}${_pickStr(_expiry)}${_pickStr(_expCheck)}"
+              .padRight(44, "<");
       lines.addAll([line1, line2]);
     }
     return lines;
@@ -696,7 +802,12 @@ class OcrMrzAggregator {
     s = s.replaceAll(RegExp(r'<{2,}'), '<');
 
     // Split by '<', strip non-letters in each (paranoid), drop short tokens
-    final parts = s.split('<').map((t) => t.replaceAll(RegExp(r'[^A-Z]'), '')).where((t) => t.length >= minTokenLen).toList();
+    final parts =
+        s
+            .split('<')
+            .map((t) => t.replaceAll(RegExp(r'[^A-Z]'), ''))
+            .where((t) => t.length >= minTokenLen)
+            .toList();
 
     if (parts.isEmpty) return '';
     return parts.join('<');
@@ -757,30 +868,64 @@ class OcrMrzAggregator {
     };
   }
 
-  bool matchValidationCount(OcrMrzCountValidation? countValidation, OcrMrzSetting setting) {
+  bool matchValidationCount(
+    OcrMrzCountValidation? countValidation,
+    OcrMrzSetting setting,
+  ) {
     int _pickCnt(MajorityCounter<String> c) => c.top()?.$2 ?? 0;
     if (countValidation == null) {
       return true;
     }
-    bool countryCountValid = !setting.validateCountry || _pickCnt(_country) >= countValidation.countryValidCount;
-    bool natCountValid = !setting.validateNationality || _pickCnt(_nat) >= countValidation.nationalityValidCount;
-    bool birthCountValid = !setting.validateBirthDateValid || _pickCnt(_birth) >= countValidation.birthDateValidCount;
-    bool expiryCountValid = !setting.validateExpiryDateValid || _pickCnt(_expiry) >= countValidation.expiryDateValidCount;
+    bool countryCountValid =
+        !setting.validateCountry ||
+        _pickCnt(_country) >= countValidation.countryValidCount;
+    bool natCountValid =
+        !setting.validateNationality ||
+        _pickCnt(_nat) >= countValidation.nationalityValidCount;
+    bool birthCountValid =
+        !setting.validateBirthDateValid ||
+        _pickCnt(_birth) >= countValidation.birthDateValidCount;
+    bool expiryCountValid =
+        !setting.validateExpiryDateValid ||
+        _pickCnt(_expiry) >= countValidation.expiryDateValidCount;
     bool sexCountValid = _pickCnt(_sex) >= countValidation.sexValidCount;
-    bool docCodeCountValid = !setting.validationDocumentCode || _pickCnt(_docCode) >= countValidation.docCodeValidCount;
-    bool optCountValid = !setting.validatePersonalNumberValid || _pickCnt(_opt) >= countValidation.personalNumberValidCount;
-    bool fNameCountValid = !setting.validateNames || _pickCnt(_fname) >= countValidation.nameValidCount;
-    bool lNameCountValid = !setting.validateNames || _pickCnt(_lname) >= countValidation.nameValidCount;
-    bool docNumCountValid = !setting.validateDocNumberValid || _pickCnt(_docNo) >= countValidation.docNumberValidCount;
+    bool docCodeCountValid =
+        !setting.validationDocumentCode ||
+        _pickCnt(_docCode) >= countValidation.docCodeValidCount;
+    bool optCountValid =
+        !setting.validatePersonalNumberValid ||
+        _pickCnt(_opt) >= countValidation.personalNumberValidCount;
+    bool fNameCountValid =
+        !setting.validateNames ||
+        _pickCnt(_fname) >= countValidation.nameValidCount;
+    bool lNameCountValid =
+        !setting.validateNames ||
+        _pickCnt(_lname) >= countValidation.nameValidCount;
+    bool docNumCountValid =
+        !setting.validateDocNumberValid ||
+        _pickCnt(_docNo) >= countValidation.docNumberValidCount;
 
-    return (countryCountValid && natCountValid && birthCountValid && expiryCountValid && sexCountValid && docCodeCountValid && optCountValid && fNameCountValid && lNameCountValid && docNumCountValid);
+    return (countryCountValid &&
+        natCountValid &&
+        birthCountValid &&
+        expiryCountValid &&
+        sexCountValid &&
+        docCodeCountValid &&
+        optCountValid &&
+        fNameCountValid &&
+        lNameCountValid &&
+        docNumCountValid);
   }
 
   /// Finds the most frequent 2-char prefixes among lines where:
   /// - the line has at least 5 chars
   /// - chars 3–5 (index 2..4) equal [last3]
   /// Ties are returned as multiple items. Set [caseSensitive] if needed.
-  String? mostCommonFirst2Prefixes(List<List<String>> groups, String last3, {bool caseSensitive = true}) {
+  String? mostCommonFirst2Prefixes(
+    List<List<String>> groups,
+    String last3, {
+    bool caseSensitive = true,
+  }) {
     if (groups.isEmpty) {
       return null;
     }
@@ -796,10 +941,14 @@ class OcrMrzAggregator {
         // Consider only the first 5 chars as the "code"
         final code = line.substring(0, 5);
 
-        final codeTail = caseSensitive ? code.substring(2) : code.substring(2).toLowerCase();
+        final codeTail =
+            caseSensitive ? code.substring(2) : code.substring(2).toLowerCase();
         if (codeTail != matcher) continue;
 
-        final prefix2 = code.substring(0, 2); // can be anything: "< ", "PV", "12", etc.
+        final prefix2 = code.substring(
+          0,
+          2,
+        ); // can be anything: "< ", "PV", "12", etc.
         freq[prefix2] = (freq[prefix2] ?? 0) + 1;
       }
     }
