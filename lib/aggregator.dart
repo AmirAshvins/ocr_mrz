@@ -311,6 +311,19 @@ class OcrMrzAggregator {
 
   final List<List<String>> _ocrLinesHistory = [];
 
+  /// Issue-date lines kept after [_ocrLinesHistory] drops frames.
+  ///
+  /// The camera locks onto the MRZ, so a "Date of issue" line read while
+  /// framing the page would otherwise age out of the 40-frame window before
+  /// accept. The printed date is often the next OCR line, so that neighbor is
+  /// stored after the label (`Date of issue 31 MAR 2023`).
+  final List<String> _stickyIssueDateLines = [];
+
+  static final RegExp _issueDateHint = RegExp(
+    r'(?:issue|lssue|issuc)',
+    caseSensitive: false,
+  );
+
   int _framesSeen = 0;
   int _step = 0;
   String? _type;
@@ -492,7 +505,18 @@ class OcrMrzAggregator {
   ///
   /// An unbounded history would grow for the whole live session and make
   /// consensus / `allOcrLines` scans progressively more expensive.
+  /// Lines that mention an issue date, and the following line glued after the
+  /// label, are kept aside so they survive after the window rolls onto the MRZ.
   void addFrameLines(List<String> lines) {
+    for (var i = 0; i < lines.length; i++) {
+      if (!_issueDateHint.hasMatch(lines[i])) continue;
+      _rememberIssueDateLine(lines[i]);
+      // Keep the value on the following line glued after the label. A bare
+      // previous line is often the birth date, so it is not pulled in.
+      if (i + 1 < lines.length) {
+        _rememberIssueDateLine('${lines[i]} ${lines[i + 1]}');
+      }
+    }
     _ocrLinesHistory.add(lines);
     const int maxFrames = 40;
     if (_ocrLinesHistory.length > maxFrames) {
@@ -500,9 +524,26 @@ class OcrMrzAggregator {
     }
   }
 
-  /// All OCR lines seen across all frames (flattened, deduplicated).
-  List<String> get allOcrLines =>
-      _ocrLinesHistory.expand((f) => f).toSet().toList();
+  void _rememberIssueDateLine(String line) {
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) return;
+    _stickyIssueDateLines.remove(trimmed);
+    _stickyIssueDateLines.add(trimmed);
+    const int maxSticky = 8;
+    if (_stickyIssueDateLines.length > maxSticky) {
+      _stickyIssueDateLines.removeRange(
+        0,
+        _stickyIssueDateLines.length - maxSticky,
+      );
+    }
+  }
+
+  /// All OCR lines seen across recent frames, plus retained issue-date lines.
+  List<String> get allOcrLines {
+    final lines = _ocrLinesHistory.expand((f) => f).toSet();
+    lines.addAll(_stickyIssueDateLines);
+    return lines.toList();
+  }
 
   bool sessionScannedData(String data) {
     return _ocrLinesHistory.any((a) => a.join("\n").contains(data));
@@ -835,6 +876,7 @@ class OcrMrzAggregator {
     _numCheck._counts.clear();
     _framesSeen = 0;
     _ocrLinesHistory.clear();
+    _stickyIssueDateLines.clear();
     _step = 0;
     _numWithCheck._counts.clear();
     _type = null;
