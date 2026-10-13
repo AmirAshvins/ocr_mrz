@@ -29,6 +29,71 @@ import 'ocr_mrz_log.dart';
 
 export 'session_log_history_list_dialog.dart';
 
+/// Whether this consensus frame should be accepted by the reader itself.
+///
+/// [autoConfirm] is false when a host quality gate owns acceptance. A relaxed
+/// live [setting] makes [OcrMrzResult.matchSetting] true for every result, and
+/// a null [countValidation] makes [OcrMrzAggregator.matchValidationCount]
+/// return true on the first frame. Those two together used to accept every
+/// OCR frame and wipe the session before a passport could stabilize.
+///
+/// Returns true only when [autoConfirm] is set and both the vote count and
+/// the field setting match.
+bool mrzFrameReadyToAutoConfirm({
+  required bool autoConfirm,
+  required OcrMrzAggregator aggregator,
+  required OcrMrzConsensus consensus,
+  required OcrMrzSetting setting,
+  OcrMrzCountValidation? countValidation,
+}) {
+  if (!autoConfirm) return false;
+  if (!aggregator.matchValidationCount(countValidation, setting)) return false;
+  return consensus.toResult().matchSetting(setting);
+}
+
+/// Accepts [consensus] and clears the session when the reader owns confirmation.
+///
+/// [onFoundMrz] runs only when the frame is accepted. [controller] is then
+/// reset so the next document starts clean. When [autoConfirm] is false the
+/// aggregator is left intact so later frames can still accumulate a passport
+/// MRZ.
+///
+/// Returns true after the session was reset.
+bool applyMrzAutoConfirm({
+  required OcrMrzController controller,
+  required OcrMrzConsensus consensus,
+  required OcrMrzSetting setting,
+  OcrMrzCountValidation? countValidation,
+  required bool autoConfirm,
+  required void Function(OcrMrzResult result) onFoundMrz,
+}) {
+  if (!mrzFrameReadyToAutoConfirm(
+    autoConfirm: autoConfirm,
+    aggregator: controller.aggregator,
+    consensus: consensus,
+    setting: setting,
+    countValidation: countValidation,
+  )) {
+    return false;
+  }
+
+  final result = consensus.toResult();
+  result.scanDuration = DateTime.now().difference(controller._sessionStartTime);
+  final mrzLines = controller.aggregator.buildMrz();
+  if (mrzLines.isNotEmpty) {
+    result.line1 = mrzLines[0];
+    if (mrzLines.length > 1) {
+      result.line2 = mrzLines[1];
+    }
+    if (mrzLines.length > 2) {
+      result.line3 = mrzLines[2];
+    }
+  }
+  onFoundMrz(result);
+  controller.resetSession();
+  return true;
+}
+
 class OcrMrzController extends CameraKitPlusController {
   final ValueNotifier<List<SessionStatus>> _sessionHistory =
       ValueNotifier<List<SessionStatus>>([SessionStatus.start()]);
@@ -122,6 +187,14 @@ class OcrMrzReader extends StatefulWidget {
   final bool showZoom;
   final bool isActive;
 
+  /// When false, consensus is still reported but this reader does not accept
+  /// the frame or call [OcrMrzController.resetSession].
+  ///
+  /// Live passport scan turns this off. The relaxed match setting would
+  /// otherwise match every frame and wipe the aggregator before the host
+  /// quality gate can hold a read.
+  final bool autoConfirm;
+
   OcrMrzReader({
     super.key,
     required this.onFoundMrz,
@@ -136,6 +209,7 @@ class OcrMrzReader extends StatefulWidget {
     this.countValidation,
     this.onConsensusChanged,
     this.isActive = true,
+    this.autoConfirm = true,
   });
 
   @override
@@ -366,44 +440,34 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
           );
           widget.mrzLogger?.call(log);
         } else {
+          final setting = widget.setting ?? OcrMrzSetting();
           final newCon = _sessionOcrHandler.handleSession(
             widget.controller.aggregator,
             c,
-            widget.setting ?? OcrMrzSetting(),
+            setting,
             widget.nameValidations ?? [],
           );
           improving = newCon;
           widget.onConsensusChanged?.call(newCon);
-          if (widget.controller.aggregator.matchValidationCount(
-            widget.countValidation,
-            widget.setting ?? OcrMrzSetting(),
-          )) {
-            if (newCon.toResult().matchSetting(
-              widget.setting ?? OcrMrzSetting(),
-            )) {
-              final result = newCon.toResult();
-              result.scanDuration = DateTime.now().difference(
-                widget.controller._sessionStartTime,
-              );
-              final mrzLines = widget.controller.aggregator.buildMrz();
-              if (mrzLines.isNotEmpty) {
-                result.line1 = mrzLines[0];
-                if (mrzLines.length > 1) {
-                  result.line2 = mrzLines[1];
-                }
-                if (mrzLines.length > 2) {
-                  result.line3 = mrzLines[2];
-                }
-              }
+          // autoConfirm false keeps the aggregator. A relaxed live setting
+          // matches every frame, and a null count validation matches
+          // immediately, so accepting here would reset the passport session
+          // before the host quality gate can hold it.
+          applyMrzAutoConfirm(
+            controller: widget.controller,
+            consensus: newCon,
+            setting: setting,
+            countValidation: widget.countValidation,
+            autoConfirm: widget.autoConfirm,
+            onFoundMrz: (result) {
               _makeApiCall(true);
               _handleResultFound(result);
 
               widget.controller.logger.flush();
 
               widget.onFoundMrz(result);
-              widget.controller.resetSession();
-            }
-          }
+            },
+          );
           if (mounted) {
             _maybeRebuildUi();
           }
