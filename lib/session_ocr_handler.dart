@@ -481,26 +481,6 @@ String _computeMrzCheckDigit(String input) {
   return (sum % 10).toString();
 }
 
-DateTime? _parseMrzDate(String yymmdd) {
-  if (!RegExp(r'^\d{6}$').hasMatch(yymmdd)) return null;
-
-  final year = int.parse(yymmdd.substring(0, 2));
-  final month = int.parse(yymmdd.substring(2, 4));
-  final day = int.parse(yymmdd.substring(4, 6));
-
-  // MRZ dates assume:
-  // - birth: usually 1900–2029 (but safe to assume <= current year)
-  // - expiry: usually 2000–2099
-  final now = DateTime.now().year % 100;
-
-  final fullYear = year <= now + 10 ? 2000 + year : 1900 + year;
-
-  try {
-    return DateTime.utc(fullYear, month, day);
-  } catch (_) {
-    return null;
-  }
-}
 
 String fixAlphaOnlyField(String value) {
   final map = {'0': 'O', '1': 'I', '5': 'S', '8': 'B', '6': 'G'};

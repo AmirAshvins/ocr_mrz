@@ -1,6 +1,6 @@
-
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
+import 'package:ocr_mrz/mrz_date.dart';
 import 'package:ocr_mrz/mrz_result_class_fix.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 import 'package:ocr_mrz/viz_name_util.dart';
@@ -46,25 +46,8 @@ String _computeMrzCheckDigit(String input) {
   return (sum % 10).toString();
 }
 
-DateTime? _parseMrzDate(String yymmdd) {
-  if (!RegExp(r'^\d{6}$').hasMatch(yymmdd)) return null;
-
-  final year = int.parse(yymmdd.substring(0, 2));
-  final month = int.parse(yymmdd.substring(2, 4));
-  final day = int.parse(yymmdd.substring(4, 6));
-
-  // MRZ dates assume:
-  // - birth: usually 1900–2029 (but safe to assume <= current year)
-  // - expiry: usually 2000–2099
-  final now = DateTime.now().year % 100;
-
-  final fullYear = year <= now + 10 ? 2000 + year : 1900 + year;
-
-  try {
-    return DateTime.utc(fullYear, month, day);
-  } catch (_) {
-    return null;
-  }
+DateTime? _parseMrzDate(String yymmdd, {required MrzYymmddField field}) {
+  return parseMrzYymmdd(yymmdd, field: field);
 }
 
 String stripSexFromDateSex(String block) {
@@ -136,7 +119,10 @@ List<String> parseOldNumNat(String secondLineFixed) {
   // run (until first '<') as a continuation, up to 3 chars.
   final contRaw = optionalData.split('<').first;
   final contClean = contRaw.replaceAll(RegExp(r'[^A-Z0-9]'), '');
-  final continuation = contClean.isEmpty ? '' : contClean.substring(0, contClean.length.clamp(0, 3));
+  final continuation =
+      contClean.isEmpty
+          ? ''
+          : contClean.substring(0, contClean.length.clamp(0, 3));
 
   // Build a "full" doc number (for UIs/DBs that want 9–12 chars).
   // The MRZ check digit STILL only validates the 9-char MRZ field.
@@ -173,14 +159,27 @@ List<String> parseOldNumNat(String secondLineFixed) {
 }
 
 class MyOcrHandlerNew {
-  static OcrMrzResult? handle(OcrData ocr, void Function(OcrMrzLog log)? mrzLogger) {
+  static OcrMrzResult? handle(
+    OcrData ocr,
+    void Function(OcrMrzLog log)? mrzLogger,
+  ) {
     // secondLineFixed must be the full TD3 line 2 (length 44), already normalized (< padded).
 
-    final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
+    final _dateSexRe = RegExp(
+      r'(\d{6})(\d)([MFX])(\d{6})(\d)',
+      caseSensitive: false,
+    );
 
-    final _td23Lead = RegExp(r'^[A-Z0-9<]{9}\d[A-Z<]{3}$'); // used on a 13-char slice from start
+    final _td23Lead = RegExp(
+      r'^[A-Z0-9<]{9}\d[A-Z<]{3}$',
+    ); // used on a 13-char slice from start
 
-    String _normLine(String s) => s.toUpperCase().replaceAll(' ', '<').replaceAll(RegExp(r'[^A-Z0-9<\r\n]'), '<').trim();
+    String _normLine(String s) =>
+        s
+            .toUpperCase()
+            .replaceAll(' ', '<')
+            .replaceAll(RegExp(r'[^A-Z0-9<\r\n]'), '<')
+            .trim();
 
     String _normalizeNat(String s) => s
         .toUpperCase()
@@ -217,7 +216,12 @@ class MyOcrHandlerNew {
     String secondLineFixed = "";
     String? thirdLineFixed;
 
-    final lines = _normLine(ocr.text).split(RegExp(r'[\r\n]+')).map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final lines =
+        _normLine(ocr.text)
+            .split(RegExp(r'[\r\n]+'))
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
     if (lines.isNotEmpty) {
       // 1) Find the line that contains the date+sex block (this is line2)
       int idx2 = -1;
@@ -275,18 +279,21 @@ class MyOcrHandlerNew {
             type = DocumentStandardType.td3;
             format = "td3";
             rawMrzLines = [line1, line2];
-            fixedMrzLines = rawMrzLines.map((a) => normalize(a, len: 44)).toList();
+            fixedMrzLines =
+                rawMrzLines.map((a) => normalize(a, len: 44)).toList();
           } else if (line2.length >= 36) {
             type = DocumentStandardType.td2;
             format = 'td2';
 
             rawMrzLines = [line1, line2];
-            fixedMrzLines = rawMrzLines.map((a) => normalize(a, len: 36)).toList();
+            fixedMrzLines =
+                rawMrzLines.map((a) => normalize(a, len: 36)).toList();
           } else {
             format = "td2";
 
             rawMrzLines = [line1, line2];
-            fixedMrzLines = rawMrzLines.map((a) => normalize(a, len: 30)).toList();
+            fixedMrzLines =
+                rawMrzLines.map((a) => normalize(a, len: 30)).toList();
             // fallback: date block position near 13 strongly suggests TD2/TD3
             type = DocumentStandardType.td2;
           }
@@ -294,7 +301,8 @@ class MyOcrHandlerNew {
           format = "td1";
 
           rawMrzLines = [line1, line2, line3 ?? ''];
-          fixedMrzLines = rawMrzLines.map((a) => normalize(a, len: 30)).toList();
+          fixedMrzLines =
+              rawMrzLines.map((a) => normalize(a, len: 30)).toList();
           type = DocumentStandardType.td1;
         }
 
@@ -311,7 +319,8 @@ class MyOcrHandlerNew {
         if (newIdx2 != -1 && newM != null) {
           // mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: fixedMrzLines, validation: validation, extractedData: {}));
 
-          final dsStart = newM.start; // start index of YYMMDD+chk+sex+YYMMDD+chk in line2
+          final dsStart =
+              newM.start; // start index of YYMMDD+chk+sex+YYMMDD+chk in line2
           final birthStr = newM.group(1)!;
           final birthChkStr = newM.group(2)!;
           final sexStr = newM.group(3)!;
@@ -324,12 +333,16 @@ class MyOcrHandlerNew {
             // TD1: nationality is AFTER the 15-char date+sex block (pos 15..17)
             final natStart = dsStart + 15;
             final natEnd = natStart + 3;
-            nationalityRaw = (natEnd <= line2.length) ? line2.substring(natStart, natEnd) : '';
+            nationalityRaw =
+                (natEnd <= line2.length)
+                    ? line2.substring(natStart, natEnd)
+                    : '';
           } else {
             // TD2/TD3: nationality is the 3 chars BEFORE the date+sex block
             final natStart = dsStart - 3;
             final natEnd = dsStart;
-            nationalityRaw = (natStart >= 0) ? line2.substring(natStart, natEnd) : '';
+            nationalityRaw =
+                (natStart >= 0) ? line2.substring(natStart, natEnd) : '';
           }
           nationality = _normalizeNat(nationalityRaw);
 
@@ -337,7 +350,8 @@ class MyOcrHandlerNew {
             // mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: [], validation: validation, extractedData: {}));
 
             ocrMrzLog("nationality is valid");
-            otherLines = [...rawLines].where((a) => !rawMrzLines.contains(a)).toList();
+            otherLines =
+                [...rawLines].where((a) => !rawMrzLines.contains(a)).toList();
             if (fixedMrzLines.length >= 2) {
               validation.linesLengthValid = true;
 
@@ -354,7 +368,10 @@ class MyOcrHandlerNew {
               }
 
               secondLineFixed = fixedMrzLines[1];
-              final mrzDatesSex = RegExp(r'(\d{6})(\d)([MFX<])(\d{6})(\d)', caseSensitive: false);
+              final mrzDatesSex = RegExp(
+                r'(\d{6})(\d)([MFX<])(\d{6})(\d)',
+                caseSensitive: false,
+              );
               final dateSexMatch = mrzDatesSex.firstMatch(secondLineFixed);
               if (dateSexMatch != null) {
                 final birthDateStr = dateSexMatch.group(1);
@@ -363,33 +380,57 @@ class MyOcrHandlerNew {
                 final expiryDateStr = dateSexMatch.group(4);
                 final expiryCheck = dateSexMatch.group(5);
 
-                validation.birthDateValid = _computeMrzCheckDigit(birthDateStr!) == birthCheck;
-                validation.expiryDateValid = _computeMrzCheckDigit(expiryDateStr!) == expiryCheck;
-                birthDate = _parseMrzDate(birthDateStr);
-                expiryDate = _parseMrzDate(expiryDateStr);
+                validation.birthDateValid =
+                    _computeMrzCheckDigit(birthDateStr!) == birthCheck;
+                validation.expiryDateValid =
+                    _computeMrzCheckDigit(expiryDateStr!) == expiryCheck;
+                birthDate = _parseMrzDate(
+                  birthDateStr,
+                  field: MrzYymmddField.birth,
+                );
+                expiryDate = _parseMrzDate(
+                  expiryDateStr,
+                  field: MrzYymmddField.expiry,
+                );
                 sex = sexStr;
               }
 
               if (type == DocumentStandardType.td3) {
-                final td3DocNumber = RegExp(r'^([A-Z0-9<]{9})(\d)', caseSensitive: false);
-                final td3DocNumberMatch = td3DocNumber.firstMatch(secondLineFixed);
+                final td3DocNumber = RegExp(
+                  r'^([A-Z0-9<]{9})(\d)',
+                  caseSensitive: false,
+                );
+                final td3DocNumberMatch = td3DocNumber.firstMatch(
+                  secondLineFixed,
+                );
                 if (td3DocNumberMatch != null) {
                   final docNumberStr = td3DocNumberMatch.group(1);
                   final docNumberCheckStr = td3DocNumberMatch.group(2);
                   docNumber = docNumberStr;
-                  validation.docNumberValid = _computeMrzCheckDigit(docNumberStr ?? '') == docNumberCheckStr;
+                  validation.docNumberValid =
+                      _computeMrzCheckDigit(docNumberStr ?? '') ==
+                      docNumberCheckStr;
 
                   finalCheckValue += docNumberStr ?? '';
                   finalCheckValue += docNumberCheckStr ?? '';
                 }
 
-                final td3Nationality = RegExp(r'^[A-Z0-9<]{10}([A-Z0-9<]{3})', caseSensitive: false);
-                final td3NationalityMatch = td3Nationality.firstMatch(secondLineFixed);
+                final td3Nationality = RegExp(
+                  r'^[A-Z0-9<]{10}([A-Z0-9<]{3})',
+                  caseSensitive: false,
+                );
+                final td3NationalityMatch = td3Nationality.firstMatch(
+                  secondLineFixed,
+                );
                 if (td3NationalityMatch != null) {
-                  final nationalityStr = fixAlphaOnlyField(td3NationalityMatch.group(1)!);
+                  final nationalityStr = fixAlphaOnlyField(
+                    td3NationalityMatch.group(1)!,
+                  );
                   // log("nationalityStr ${nationalityStr}");
                   nationality = nationalityStr;
-                  validation.nationalityValid = isValidMrzCountry(nationalityStr ?? '');
+                  validation.nationalityValid = isValidMrzCountry(
+                    nationalityStr ?? '',
+                  );
                 } else {
                   // log("td3NationalityMatch no match");
                 }
@@ -405,11 +446,18 @@ class MyOcrHandlerNew {
                 }
 
                 if (dateSexMatch != null) {
-                  finalCheckValue += stripSexFromDateSex(dateSexMatch.group(0)!);
+                  finalCheckValue += stripSexFromDateSex(
+                    dateSexMatch.group(0)!,
+                  );
                 }
 
-                final td3OptionalFinal = RegExp(r'^.{28}([A-Z0-9<]{15})(\d)$', caseSensitive: false);
-                final td3OptionalFinalMatch = td3OptionalFinal.firstMatch(secondLineFixed);
+                final td3OptionalFinal = RegExp(
+                  r'^.{28}([A-Z0-9<]{15})(\d)$',
+                  caseSensitive: false,
+                );
+                final td3OptionalFinalMatch = td3OptionalFinal.firstMatch(
+                  secondLineFixed,
+                );
 
                 if (td3OptionalFinalMatch != null) {
                   final optionalStr = td3OptionalFinalMatch.group(1);
@@ -420,31 +468,48 @@ class MyOcrHandlerNew {
 
                   validation.personalNumberValid = true;
                   validation.hasFinalCheck = true;
-                  validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
+                  validation.finalCheckValid =
+                      _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
                 }
 
                 name = parseNamesTd3OrTd2(firstLineFixed);
               } else if (type == DocumentStandardType.td2) {
                 // Doc number + check (pos 0..8, 9)
-                final td2DocNumber = RegExp(r'^([A-Z0-9<]{9})(\d)', caseSensitive: false);
-                final td2DocNumberMatch = td2DocNumber.firstMatch(secondLineFixed);
+                final td2DocNumber = RegExp(
+                  r'^([A-Z0-9<]{9})(\d)',
+                  caseSensitive: false,
+                );
+                final td2DocNumberMatch = td2DocNumber.firstMatch(
+                  secondLineFixed,
+                );
                 if (td2DocNumberMatch != null) {
                   final docNumberStr = td2DocNumberMatch.group(1);
                   final docNumberCheckStr = td2DocNumberMatch.group(2);
                   docNumber = docNumberStr;
-                  validation.docNumberValid = _computeMrzCheckDigit(docNumberStr ?? '') == docNumberCheckStr;
+                  validation.docNumberValid =
+                      _computeMrzCheckDigit(docNumberStr ?? '') ==
+                      docNumberCheckStr;
 
                   finalCheckValue += (docNumberStr ?? '');
                   finalCheckValue += (docNumberCheckStr ?? '');
                 }
 
                 // Nationality (pos 10..12)
-                final td2Nationality = RegExp(r'^[A-Z0-9<]{10}([A-Z<]{3})', caseSensitive: false);
-                final td2NationalityMatch = td2Nationality.firstMatch(secondLineFixed);
+                final td2Nationality = RegExp(
+                  r'^[A-Z0-9<]{10}([A-Z<]{3})',
+                  caseSensitive: false,
+                );
+                final td2NationalityMatch = td2Nationality.firstMatch(
+                  secondLineFixed,
+                );
                 if (td2NationalityMatch != null) {
-                  final nationalityStr = fixAlphaOnlyField(td2NationalityMatch.group(1)!);
+                  final nationalityStr = fixAlphaOnlyField(
+                    td2NationalityMatch.group(1)!,
+                  );
                   nationality = nationalityStr;
-                  validation.nationalityValid = isValidMrzCountry(nationalityStr ?? '');
+                  validation.nationalityValid = isValidMrzCountry(
+                    nationalityStr ?? '',
+                  );
                   finalCheckValue += nationalityStr!;
                 }
 
@@ -454,8 +519,13 @@ class MyOcrHandlerNew {
                 }
 
                 // Optional (7) + final check (1) (pos 28..34, 35)
-                final td2OptionalFinal = RegExp(r'^.{28}([A-Z0-9<]{7})(\d)$', caseSensitive: false);
-                final td2OptionalFinalMatch = td2OptionalFinal.firstMatch(secondLineFixed);
+                final td2OptionalFinal = RegExp(
+                  r'^.{28}([A-Z0-9<]{7})(\d)$',
+                  caseSensitive: false,
+                );
+                final td2OptionalFinalMatch = td2OptionalFinal.firstMatch(
+                  secondLineFixed,
+                );
 
                 if (td2OptionalFinalMatch != null) {
                   final optionalStr = td2OptionalFinalMatch.group(1);
@@ -468,9 +538,11 @@ class MyOcrHandlerNew {
                   } else {
                     optional = optionalStr;
                     finalCheckValue += (optionalStr ?? '');
-                    validation.personalNumberValid = true; // treat optional as personal no.
+                    validation.personalNumberValid =
+                        true; // treat optional as personal no.
                     validation.hasFinalCheck = true;
-                    validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
+                    validation.finalCheckValid =
+                        _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
                   }
                 }
 
@@ -478,27 +550,44 @@ class MyOcrHandlerNew {
               } else if (type == DocumentStandardType.td1) {
                 docNumber = firstLineFixed.substring(5, 14);
                 final docNumberCheck = firstLineFixed[14];
-                validation.docNumberValid = _computeMrzCheckDigit(docNumber) == docNumberCheck;
+                validation.docNumberValid =
+                    _computeMrzCheckDigit(docNumber) == docNumberCheck;
 
                 finalCheckValue += firstLineFixed.substring(5, 30);
 
                 // Dates + sex first (pos 0..14)
                 if (dateSexMatch != null) {
-                  finalCheckValue += stripSexFromDateSex(dateSexMatch.group(0)!);
+                  finalCheckValue += stripSexFromDateSex(
+                    dateSexMatch.group(0)!,
+                  );
                 }
 
                 // Nationality (pos 15..17)
-                final td1Nationality = RegExp(r'^.{15}([A-Z<]{3})', caseSensitive: false);
-                final td1NationalityMatch = td1Nationality.firstMatch(secondLineFixed);
+                final td1Nationality = RegExp(
+                  r'^.{15}([A-Z<]{3})',
+                  caseSensitive: false,
+                );
+                final td1NationalityMatch = td1Nationality.firstMatch(
+                  secondLineFixed,
+                );
                 if (td1NationalityMatch != null) {
-                  final nationalityStr = fixAlphaOnlyField(td1NationalityMatch.group(1)!);
+                  final nationalityStr = fixAlphaOnlyField(
+                    td1NationalityMatch.group(1)!,
+                  );
                   nationality = nationalityStr;
-                  validation.nationalityValid = isValidMrzCountry(nationalityStr ?? '');
+                  validation.nationalityValid = isValidMrzCountry(
+                    nationalityStr ?? '',
+                  );
                 }
 
                 // Optional (11) + final check (1) (pos 18..28, 29)
-                final td1OptionalFinal = RegExp(r'^.{18}([A-Z0-9<]{11})(\d)$', caseSensitive: false);
-                final td1OptionalFinalMatch = td1OptionalFinal.firstMatch(secondLineFixed);
+                final td1OptionalFinal = RegExp(
+                  r'^.{18}([A-Z0-9<]{11})(\d)$',
+                  caseSensitive: false,
+                );
+                final td1OptionalFinalMatch = td1OptionalFinal.firstMatch(
+                  secondLineFixed,
+                );
 
                 if (td1OptionalFinalMatch != null) {
                   final optionalStr = td1OptionalFinalMatch.group(1);
@@ -506,20 +595,28 @@ class MyOcrHandlerNew {
 
                   optional = optionalStr;
 
-                  final natMatch = RegExp(r'^.{15}([A-Z<]{3})', caseSensitive: false).firstMatch(secondLineFixed);
+                  final natMatch = RegExp(
+                    r'^.{15}([A-Z<]{3})',
+                    caseSensitive: false,
+                  ).firstMatch(secondLineFixed);
                   final nationalityForFinal = natMatch?.group(1) ?? '';
 
                   finalCheckValue += (optionalStr ?? ''); // positions 18..28
                   validation.personalNumberValid = true;
                   validation.hasFinalCheck = true;
-                  validation.finalCheckValid = _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
+                  validation.finalCheckValid =
+                      _computeMrzCheckDigit(finalCheckValue) == finalCheckStr;
                 }
                 String nameLine = fixedMrzLines.last;
                 name = parseNamesTd1(nameLine);
               }
 
               if (name != null) {
-                var (a, _, fixed) = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []);
+                var (a, _, fixed) = name.validateNames(
+                  otherLines,
+                  OcrMrzSetting(nameValidationMode: NameValidationMode.exact),
+                  [],
+                );
                 name = fixed;
                 firstName = name.firstName;
                 lastName = name.surname;
@@ -557,14 +654,27 @@ class MyOcrHandlerNew {
       personalNumber: optional ?? '',
       optionalData: optional ?? '',
       valid: validation,
-      checkDigits: CheckDigits(document: true, birth: true, expiry: true, optional: true),
+      checkDigits: CheckDigits(
+        document: true,
+        birth: true,
+        expiry: true,
+        optional: true,
+      ),
       ocrData: ocr,
       nameVizAgreement: nameVizAgreement,
       needsManualNameVerification: needsManualNameVerification,
     );
     if (rawMrzLines.isNotEmpty) {
       ocrMrzLog("\n${rawMrzLines.join("\n")}");
-      mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: fixedMrzLines, validation: validation, extractedData: result.toJson()));
+      mrzLogger?.call(
+        OcrMrzLog(
+          rawText: ocr.text,
+          rawMrzLines: rawMrzLines,
+          fixedMrzLines: fixedMrzLines,
+          validation: validation,
+          extractedData: result.toJson(),
+        ),
+      );
     } else {}
     return result;
 

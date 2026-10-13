@@ -5,11 +5,13 @@
 import 'dart:convert';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
+import 'package:ocr_mrz/mrz_date.dart';
 import 'package:ocr_mrz/mrz_result_class_fix.dart';
 
 import 'orc_mrz_log_class.dart';
 
-SessionStatus sessionStatusFromJson(String str) => SessionStatus.fromJson(json.decode(str));
+SessionStatus sessionStatusFromJson(String str) =>
+    SessionStatus.fromJson(json.decode(str));
 
 String sessionStatusToJson(SessionStatus data) => json.encode(data.toJson());
 
@@ -114,7 +116,9 @@ class SessionStatus {
     step: step ?? this.step,
     details: details ?? this.details,
     ocr: ocr ?? this.ocr,
-    validation: OcrMrzValidation.fromJson((validation ?? this.validation ?? OcrMrzValidation()).toJson()),
+    validation: OcrMrzValidation.fromJson(
+      (validation ?? this.validation ?? OcrMrzValidation()).toJson(),
+    ),
     type: type ?? this.type,
     format: format ?? this.format,
     docNumber: docNumber ?? this.docNumber,
@@ -143,11 +147,15 @@ class SessionStatus {
   );
 
   factory SessionStatus.fromJson(Map<String, dynamic> json) => SessionStatus(
-    dateTime: json["dateTime"] == null ? null : DateTime.parse(json["dateTime"]),
+    dateTime:
+        json["dateTime"] == null ? null : DateTime.parse(json["dateTime"]),
     step: json["step"],
     details: json["details"],
     ocr: json["ocr"],
-    validation: json["validation"] == null ? null : OcrMrzValidation.fromJson(json["validation"]),
+    validation:
+        json["validation"] == null
+            ? null
+            : OcrMrzValidation.fromJson(json["validation"]),
     type: json["type"],
     format: json["format"],
     docNumber: json["docNumber"],
@@ -208,9 +216,15 @@ class SessionStatus {
     "logDetails": logDetails,
   };
 
-  factory SessionStatus.start() => SessionStatus(dateTime: DateTime.now(), step: 0, details: 'Start', ocr: OcrData(text: "", lines: []));
+  factory SessionStatus.start() => SessionStatus(
+    dateTime: DateTime.now(),
+    step: 0,
+    details: 'Start',
+    ocr: OcrData(text: "", lines: []),
+  );
 
-  String get getFinalCheckValue => "${docNumber ?? ''}${numberCheck ?? ''}${birthDate ?? ''}${birthCheck ?? ''}${expiryDate ?? ''}${expCheck ?? ''}${optional ?? ''}";
+  String get getFinalCheckValue =>
+      "${docNumber ?? ''}${numberCheck ?? ''}${birthDate ?? ''}${birthCheck ?? ''}${expiryDate ?? ''}${expCheck ?? ''}${optional ?? ''}";
 
   OcrMrzResult get getOcrResult => OcrMrzResult(
     line1: line1 ?? '',
@@ -225,19 +239,34 @@ class SessionStatus {
     firstName: firstName ?? '',
     documentNumber: docNumber ?? '',
     nationality: nationality ?? '',
-    birthDate: _parseMrzDate(birthDate ?? ''),
-    expiryDate: _parseMrzDate(expiryDate ?? ''),
+    // Birth must not use the expiry lookahead, or 1930 is read as 2030.
+    birthDate: parseMrzYymmdd(birthDate ?? '', field: MrzYymmddField.birth),
+    expiryDate: parseMrzYymmdd(expiryDate ?? '', field: MrzYymmddField.expiry),
     sex: sex ?? '',
     personalNumber: optional ?? '',
     optionalData: optional ?? '',
     valid: validation ?? OcrMrzValidation(),
-    checkDigits: CheckDigits(document: false, birth: false, expiry: false, optional: false),
+    checkDigits: CheckDigits(
+      document: false,
+      birth: false,
+      expiry: false,
+      optional: false,
+    ),
     ocrData: ocr ?? OcrData(text: "", lines: []),
   );
 
-  List<String> get getLines => line3 == null ? [line1 ?? '', line2 ?? ''] : [line1 ?? '', line2 ?? '', line3 ?? ''];
+  List<String> get getLines =>
+      line3 == null
+          ? [line1 ?? '', line2 ?? '']
+          : [line1 ?? '', line2 ?? '', line3 ?? ''];
 
-  OcrMrzLog get getLog => OcrMrzLog(rawText: ocr?.text ?? '', rawMrzLines: getLines, fixedMrzLines: getLines, validation: validation ?? OcrMrzValidation(), extractedData: getOcrResult.toJson());
+  OcrMrzLog get getLog => OcrMrzLog(
+    rawText: ocr?.text ?? '',
+    rawMrzLines: getLines,
+    fixedMrzLines: getLines,
+    validation: validation ?? OcrMrzValidation(),
+    extractedData: getOcrResult.toJson(),
+  );
 
   @override
   String toString() {
@@ -268,27 +297,7 @@ class SessionStatus {
 
   @override
   bool operator ==(Object other) {
-    return other is SessionStatus && jsonEncode(toJson()) == jsonEncode(other.toJson());
-  }
-}
-
-DateTime? _parseMrzDate(String yymmdd) {
-  if (!RegExp(r'^\d{6}$').hasMatch(yymmdd)) return null;
-
-  final year = int.parse(yymmdd.substring(0, 2));
-  final month = int.parse(yymmdd.substring(2, 4));
-  final day = int.parse(yymmdd.substring(4, 6));
-
-  // MRZ dates assume:
-  // - birth: usually 1900–2029 (but safe to assume <= current year)
-  // - expiry: usually 2000–2099
-  final now = DateTime.now().year % 100;
-
-  final fullYear = year <= now + 10 ? 2000 + year : 1900 + year;
-
-  try {
-    return DateTime.utc(fullYear, month, day);
-  } catch (_) {
-    return null;
+    return other is SessionStatus &&
+        jsonEncode(toJson()) == jsonEncode(other.toJson());
   }
 }

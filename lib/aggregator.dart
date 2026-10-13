@@ -1,5 +1,6 @@
 import 'package:camera_kit_plus/camera_kit_plus.dart';
 import 'package:ocr_mrz/my_ocr_handler.dart' hide DocumentStandardType;
+import 'package:ocr_mrz/mrz_date.dart';
 import 'package:ocr_mrz/mrz_string_util.dart';
 import 'package:ocr_mrz/ocr_mrz_settings_class.dart';
 import 'package:ocr_mrz/viz_name_util.dart';
@@ -56,27 +57,6 @@ String _dateKey(DateTime d) =>
 //   // k is in yyyy-MM-dd format
 //   return DateTime.tryParse("$k 00:00:00Z") ?? DateTime.now().toUtc();
 // }
-
-DateTime? _parseDateKey(String yymmdd) {
-  if (!RegExp(r'^\d{6}$').hasMatch(yymmdd)) return null;
-
-  final year = int.parse(yymmdd.substring(0, 2));
-  final month = int.parse(yymmdd.substring(2, 4));
-  final day = int.parse(yymmdd.substring(4, 6));
-
-  // MRZ dates assume:
-  // - birth: usually 1900–2029 (but safe to assume <= current year)
-  // - expiry: usually 2000–2099
-  final now = DateTime.now().year % 100;
-
-  final fullYear = year <= now + 10 ? 2000 + year : 1900 + year;
-
-  try {
-    return DateTime.utc(fullYear, month, day);
-  } catch (_) {
-    return null;
-  }
-}
 
 /// ---------- Aggregated Field Stats ----------
 
@@ -320,7 +300,13 @@ class OcrMrzAggregator {
   final List<String> _stickyIssueDateLines = [];
 
   static final RegExp _issueDateHint = RegExp(
-    r'(?:issue|lssue|issuc)',
+    r'(?:issue|lssue|issuc|d[eéè]livrance)',
+    caseSensitive: false,
+  );
+
+  /// `15 JAN/JAN 20` — kept with the issue label even when OCR reads it first.
+  static final RegExp _bilingualDateLine = RegExp(
+    r'\d{1,2}\s*[A-Za-z]{3,9}\s*/\s*[A-Za-z]{3,9}\s*\d{2,4}',
     caseSensitive: false,
   );
 
@@ -508,6 +494,11 @@ class OcrMrzAggregator {
   /// Lines that mention an issue date, and the following line glued after the
   /// label, are kept aside so they survive after the window rolls onto the MRZ.
   void addFrameLines(List<String> lines) {
+    // Bilingual values (`15 JAN/JAN 20`) may be read before the label column.
+    final bilingual = <String>[
+      for (final line in lines)
+        if (_bilingualDateLine.hasMatch(line)) line.trim(),
+    ];
     for (var i = 0; i < lines.length; i++) {
       if (!_issueDateHint.hasMatch(lines[i])) continue;
       _rememberIssueDateLine(lines[i]);
@@ -515,6 +506,13 @@ class OcrMrzAggregator {
       // previous line is often the birth date, so it is not pulled in.
       if (i + 1 < lines.length) {
         _rememberIssueDateLine('${lines[i]} ${lines[i + 1]}');
+      }
+      // Canadian pages list Date of issue, then Date of expiry, then the
+      // values. The date is not the next line, and MRZ frames would drop it.
+      final tail = lines.sublist(i).join(' ').trim();
+      if (tail.isNotEmpty) _rememberIssueDateLine(tail);
+      if (bilingual.isNotEmpty) {
+        _rememberIssueDateLine('${lines[i]} ${bilingual.join(' ')}');
       }
     }
     _ocrLinesHistory.add(lines);
@@ -529,7 +527,10 @@ class OcrMrzAggregator {
     if (trimmed.isEmpty) return;
     _stickyIssueDateLines.remove(trimmed);
     _stickyIssueDateLines.add(trimmed);
-    const int maxSticky = 8;
+    // One Canadian frame can mention issue and délivrance separately, and
+    // each mention keeps the label, the next line, the tail, and the
+    // bilingual values. 8 was only enough for the next-line pair.
+    const int maxSticky = 16;
     if (_stickyIssueDateLines.length > maxSticky) {
       _stickyIssueDateLines.removeRange(
         0,
@@ -595,8 +596,15 @@ class OcrMrzAggregator {
       lastName: lname,
       firstName: fname,
       nationality: nat == null ? null : fixAlphaOnlyField(nat),
-      birthDate: birthKey != null ? _parseDateKey(birthKey) : null,
-      expiryDate: expiryKey != null ? _parseDateKey(expiryKey) : null,
+      // Same YY is a past birth and a future expiry: 30 is 1930 vs 2030.
+      birthDate:
+          birthKey != null
+              ? parseMrzYymmdd(birthKey, field: MrzYymmddField.birth)
+              : null,
+      expiryDate:
+          expiryKey != null
+              ? parseMrzYymmdd(expiryKey, field: MrzYymmddField.expiry)
+              : null,
       sex: sex,
       personalNumber: pnum,
       optionalData: opt,
