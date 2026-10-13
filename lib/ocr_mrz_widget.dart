@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -26,6 +25,7 @@ import 'mrz_result_class_fix.dart';
 import 'name_validation_data_class.dart';
 import 'travel_doc_util.dart';
 import 'visa_util.dart';
+import 'ocr_mrz_log.dart';
 
 export 'session_log_history_list_dialog.dart';
 
@@ -224,7 +224,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
       request.fields['data'] = jsonEncode(data);
 
       if (apiConfig.attachPhoto) {
-        log("_makeApiCall with attach photo");
+        ocrMrzLog("_makeApiCall with attach photo");
         final photoPath = await widget.controller.takePicture();
         if (photoPath != null) {
           final imageFile = File(photoPath);
@@ -256,7 +256,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
           );
         }
       } else {
-        log("_makeApiCall without photo");
+        ocrMrzLog("_makeApiCall without photo");
       }
 
       final streamedResponse = await request.send();
@@ -268,7 +268,7 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
         final jsonResponse = jsonDecode(response.body);
         ApiResponse res = ApiResponse.fromJson(jsonResponse);
         if (res.success) {
-          log("we got response from online parser ");
+          ocrMrzLog("we got response from online parser ");
           final OcrMrzResult result = res.toOcrMrzResult();
           result.scanDuration = DateTime.now().difference(
             widget.controller._sessionStartTime,
@@ -279,14 +279,14 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
           }
         }
       } else {
-        log("API call failed with status code ${response.statusCode}");
+        ocrMrzLog("API call failed with status code ${response.statusCode}");
         widget.controller.logger.log(
           message: "API call failed with status code ${response.statusCode}",
           details: {'body': response.body},
         );
       }
     } catch (e) {
-      log("API call threw an exception ${e}");
+      ocrMrzLog("API call threw an exception ${e}");
 
       widget.controller.logger.log(
         message: "API call threw an exception",
@@ -318,11 +318,11 @@ class _OcrMrzReaderState extends State<OcrMrzReader> {
     }
 
     if (oldWidget.setting?.macro != widget.setting?.macro) {
-      log("should change macro");
+      ocrMrzLog("should change macro");
       widget.controller.setMacro(widget.setting?.macro ?? false);
     }
     if (oldWidget.setting?.rotation != widget.setting?.rotation) {
-      log("should change rotation");
+      ocrMrzLog("should change rotation");
       widget.controller.setOcrRotation(widget.setting?.rotation ?? 0);
     }
   }
@@ -466,8 +466,8 @@ void handleOcr(
     final parsed = OcrMrzResult.fromJson(result);
     onFoundMrz(parsed);
   } catch (e, st) {
-    log(e.toString());
-    log(st.toString());
+    ocrMrzLog(e.toString());
+    ocrMrzLog(st.toString());
   }
 }
 
@@ -486,8 +486,8 @@ void handleOcrNew(
       onFoundMrz(result);
     }
   } catch (e, st) {
-    log(e.toString());
-    log(st.toString());
+    ocrMrzLog(e.toString());
+    ocrMrzLog(st.toString());
   }
 }
 
@@ -506,7 +506,7 @@ void handleOcr3(
       onFoundMrz(result);
     }
   } catch (e, st) {
-    log(e.toString());
-    log(st.toString());
+    ocrMrzLog(e.toString());
+    ocrMrzLog(st.toString());
   }
 }

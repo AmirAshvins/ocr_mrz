@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -8,6 +7,7 @@ import 'package:ocr_mrz/orc_mrz_log_class.dart';
 
 import 'ocr_mrz_settings_class.dart';
 import 'travel_doc_util.dart';
+import 'ocr_mrz_log.dart';
 
 String _normalizeLine(String line) {
   final map = {
@@ -189,7 +189,7 @@ Map<String, dynamic>? tryParseMrzFromOcrLines(OcrData ocrData, OcrMrzSetting? se
 
     return resultMap;
   } catch (e) {
-    log("${e}");
+    ocrMrzLog("${e}");
     return null;
   }
 }

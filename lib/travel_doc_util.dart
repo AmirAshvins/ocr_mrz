@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -10,6 +9,7 @@ import 'mrz_result_class_fix.dart';
 import 'mrz_string_util.dart';
 import 'ocr_mrz_settings_class.dart';
 import 'orc_mrz_log_class.dart';
+import 'ocr_mrz_log.dart';
 
 // Reuse these from your codebase if already defined; otherwise keep here.
 String _normalizeIdLine(String line) {
@@ -281,7 +281,7 @@ Map<String, dynamic>? _parseTd1({
     final opt2 = l2.substring(18, 29);
     final finalComposite = l2[29];
 
-    log("Nationality ${nationality}");
+    ocrMrzLog("Nationality ${nationality}");
 
     // Line3 (30): names "LAST<<FIRST<MIDDLE..."
     final nameField = l3;
@@ -310,7 +310,7 @@ Map<String, dynamic>? _parseTd1({
 
     // Build result
 
-    log("Nationality Nationality $nationality");
+    ocrMrzLog("Nationality Nationality $nationality");
 
     // final validateSettings = setting ?? OcrMrzSetting();
     final validation = validateMrzLineTd1(
@@ -357,7 +357,7 @@ Map<String, dynamic>? _parseTd1({
     //   return null;
     // }
 
-    log(validation.toString());
+    ocrMrzLog(validation.toString());
     if (validateSettings.validateNationality && !validation.nationalityValid) {
       // log("$line1\n$line2");
       return null;
@@ -437,7 +437,7 @@ OcrMrzValidation validateMrzLineTd1({
     final opt2 = l2.substring(18, 29);
     final finalComposite = l2[29];
 
-    log("Nationality ${nationality}");
+    ocrMrzLog("Nationality ${nationality}");
 
     // Line3 (30): names "LAST<<FIRST<MIDDLE..."
     final nameField = l3;
@@ -556,10 +556,10 @@ Map<String, dynamic>? _findTd2PairAndParse({
         // if (!_looksLikeTd1Line2(line2)) continue;
         // if (!_looksLikeTd1Line1(line1)) continue;
 
-        log("*" * 100);
-        log(line1);
-        log(line2);
-        log(line3);
+        ocrMrzLog("*" * 100);
+        ocrMrzLog(line1);
+        ocrMrzLog(line2);
+        ocrMrzLog(line3);
 
         final other = <String>[];
         for (int t = 0; t < rawAllLines.length; t++) {
@@ -645,7 +645,7 @@ Map<String, dynamic>? _parseTd2({
     final docChk = l2[9];
     final nationality = fixAlphaOnlyField(l2.substring(10, 13));
 
-    log("Nationality ${nationality}");
+    ocrMrzLog("Nationality ${nationality}");
     final birth = l2.substring(13, 19);
     final birthChk = l2[19];
     final sex = l2[20];

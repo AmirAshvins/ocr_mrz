@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -9,6 +8,7 @@ import 'package:ocr_mrz/viz_name_util.dart';
 import 'my_name_handler.dart';
 import 'ocr_mrz_settings_class.dart';
 import 'orc_mrz_log_class.dart';
+import 'ocr_mrz_log.dart';
 
 enum DocumentStandardType { td1, td2, td3 }
 
@@ -336,7 +336,7 @@ class MyOcrHandlerNew {
           if (isValidMrzCountry(nationality)) {
             // mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: [], validation: validation, extractedData: {}));
 
-            log("nationality is valid");
+            ocrMrzLog("nationality is valid");
             otherLines = [...rawLines].where((a) => !rawMrzLines.contains(a)).toList();
             if (fixedMrzLines.length >= 2) {
               validation.linesLengthValid = true;
@@ -350,7 +350,7 @@ class MyOcrHandlerNew {
               validation.countryValid = isValidMrzCountry(countryCode);
 
               if (!validation.countryValid) {
-                log("country ${countryCode} is no valid");
+                ocrMrzLog("country ${countryCode} is no valid");
               }
 
               secondLineFixed = fixedMrzLines[1];
@@ -528,8 +528,8 @@ class MyOcrHandlerNew {
                 validation.nameValid = a;
               }
 
-              log(validation.toString());
-              log("-" * 100);
+              ocrMrzLog(validation.toString());
+              ocrMrzLog("-" * 100);
             }
           }
         }
@@ -563,7 +563,7 @@ class MyOcrHandlerNew {
       needsManualNameVerification: needsManualNameVerification,
     );
     if (rawMrzLines.isNotEmpty) {
-      log("\n${rawMrzLines.join("\n")}");
+      ocrMrzLog("\n${rawMrzLines.join("\n")}");
       mrzLogger?.call(OcrMrzLog(rawText: ocr.text, rawMrzLines: rawMrzLines, fixedMrzLines: fixedMrzLines, validation: validation, extractedData: result.toJson()));
     } else {}
     return result;

@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -8,6 +7,7 @@ import 'package:ocr_mrz/session_status_class.dart';
 import 'package:ocr_mrz/travel_doc_util.dart';
 
 import 'ocr_mrz_settings_class.dart';
+import 'ocr_mrz_log.dart';
 
 final _dateSexRe = RegExp(r'(\d{6})(\d)([MFX])(\d{6})(\d)', caseSensitive: false);
 
@@ -174,7 +174,7 @@ class SessionOcrHandler {
                 String docCode = firstFiveChars.substring(0, 2);
                 String countryCode = firstFiveChars.substring(2, 5);
                 bool validCode = DocumentCodeHelper.isValid(docCode);
-                log("valid code ${validCode} ==> ${docCode}");
+                ocrMrzLog("valid code ${validCode} ==> ${docCode}");
                 bool validCountry = isValidMrzCountry(countryCode);
                 if (validCode && validCountry) {
                   numberStr = firstLineGuess.substring(5, 14);
@@ -405,7 +405,7 @@ class SessionOcrHandler {
       return updatedSession;
     } catch (e) {
       if (e is Error) {
-        log("$e\n${e.stackTrace}");
+        ocrMrzLog("$e\n${e.stackTrace}");
       }
       rethrow;
     }

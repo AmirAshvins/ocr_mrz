@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -10,6 +9,7 @@ import 'ocr_mrz_settings_class.dart';
 import 'orc_mrz_log_class.dart';
 import 'passport_util.dart';
 import 'travel_doc_util.dart'; // reuse your flags
+import 'ocr_mrz_log.dart';
 // Reuse: isValidMrzCountry(String), _computeMrzCheckDigit(String), validateNames(...), extractWords(...)
 
 /// Public entry — tries MRV-A then MRV-B. Returns a JSON-ish map compatible with your OcrMrzResult.fromJson()
@@ -220,7 +220,7 @@ Map<String, dynamic>? _tryPairAndParse(
   )?.let((res) {
     // Attach raw OCR for debugging like your passport code
     res['ocrData'] = ocr.toJson();
-    log(jsonEncode(ocr.toJson()));
+    ocrMrzLog(jsonEncode(ocr.toJson()));
     return res;
   });
 }
@@ -341,7 +341,7 @@ Map<String, dynamic>? _parseVisaCommon({
   required void Function(OcrMrzLog log)? mrzLogger,
 }) {
   try {
-    log("_parseVisaCommon");
+    ocrMrzLog("_parseVisaCommon");
     // --- Line 1 ---
     final documentType = line1.substring(0, 1); // 'V'
     final documentCode = line1.substring(0, 2); // 'V'
@@ -454,7 +454,7 @@ Map<String, dynamic>? _parseVisaCommon({
 
     if (firstName.isEmpty && lastName.isEmpty) return null;
 
-    log(validation.toString());
+    ocrMrzLog(validation.toString());
     // Build result similar to your passport result
     // return {
     //   'format': len == 44 ? 'MRV-A' : 'MRV-B',

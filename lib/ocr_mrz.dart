@@ -7,6 +7,7 @@ export 'mrz_result_class.dart';
 export 'ocr_mrz_widget.dart';
 export 'ocr_mrz_widget_new.dart';
 export 'passport_dialog.dart';
+export 'ocr_mrz_log.dart';
 
 class Calculator {
   /// Returns [value] plus 1.

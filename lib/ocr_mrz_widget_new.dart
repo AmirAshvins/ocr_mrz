@@ -1,10 +1,10 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:ocr_mrz/mrz_parser/mrz_result.dart';
 import 'package:ocr_mrz/mrz_parser/mrz_validation_settings.dart';
 import 'package:ocr_mrz/ocr_mrz_new_controller.dart';
+import 'ocr_mrz_log.dart';
 
 class OcrMrzReaderNew extends StatefulWidget {
   final void Function(MrzResult result) onFoundMrz;
@@ -71,7 +71,7 @@ class _OcrMrzReaderNewState extends State<OcrMrzReaderNew> {
           widget.onProgress?.call(widget.controller.mrzParser.getProgress(ocrData));
 
           if (result != null) {
-            log('--- MRZ Found! ---');
+            ocrMrzLog('--- MRZ Found! ---');
 
             // 3. Call the user's callback first.
             widget.onFoundMrz(result);
@@ -80,7 +80,7 @@ class _OcrMrzReaderNewState extends State<OcrMrzReaderNew> {
             widget.controller.resetSession();
           }
         } catch (e) {
-          log('Error during MRZ parsing: $e');
+          ocrMrzLog('Error during MRZ parsing: $e');
         }
       },
     );

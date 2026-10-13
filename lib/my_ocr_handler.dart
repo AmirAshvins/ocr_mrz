@@ -1,4 +1,3 @@
-import 'dart:developer';
 
 import 'package:camera_kit_plus/camera_kit_ocr_plus_view.dart';
 import 'package:ocr_mrz/doc_code_validator.dart';
@@ -8,6 +7,7 @@ import 'package:ocr_mrz/travel_doc_util.dart';
 
 import 'my_name_handler.dart';
 import 'orc_mrz_log_class.dart';
+import 'ocr_mrz_log.dart';
 
 enum DocumentStandardType { td1, td2, td3 }
 
@@ -214,7 +214,7 @@ class MyOcrHandler {
         type = DocumentStandardType.td1;
         fixedMrzLines = rawMrzLines.map((a) => normalize(a, len: 30)).toList();
       }
-      log("\n${fixedMrzLines.join("\n")}");
+      ocrMrzLog("\n${fixedMrzLines.join("\n")}");
 
       otherLines = [...rawLines].where((a) => !rawMrzLines.contains(a)).toList();
       if (fixedMrzLines.length < 2) return null;
@@ -230,7 +230,7 @@ class MyOcrHandler {
       validation.countryValid = isValidMrzCountry(countryCode);
 
       if (!validation.countryValid) {
-        log("country $countryCode is not valid");
+        ocrMrzLog("country $countryCode is not valid");
       }
 
       final mrzDatesSex = RegExp(r'(\d{6})(\d)([MFX<])(\d{6})(\d)', caseSensitive: false);
@@ -405,8 +405,8 @@ class MyOcrHandler {
         validation.nameValid = name.validateNames(otherLines, OcrMrzSetting(nameValidationMode: NameValidationMode.exact), []).$1;
       }
 
-      log(validation.toString());
-      log("-" * 100);
+      ocrMrzLog(validation.toString());
+      ocrMrzLog("-" * 100);
 
       OcrMrzResult result = OcrMrzResult(
         line1: firstLineFixed,
